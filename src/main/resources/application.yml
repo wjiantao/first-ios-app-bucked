@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 密码允许通过环境变量覆盖；默认与 sky-take-out 本地环境保持一致
+    url: jdbc:mysql://${SHIGUANG_DB_HOST:localhost}:${SHIGUANG_DB_PORT:3306}/shiguang?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${SHIGUANG_DB_USERNAME:root}
+    password: ${SHIGUANG_DB_PASSWORD:123456}
+  redis:
+    host: ${SHIGUANG_REDIS_HOST:localhost}
+    port: ${SHIGUANG_REDIS_PORT:6379}
+    password: ${SHIGUANG_REDIS_PASSWORD:}
+    timeout: 2000ms
+  servlet:
+    multipart:
+      # 上传单文件 5MB 上限，与 CommonController 中的校验保持一致
+      max-file-size: 5MB
+      max-request-size: 6MB
+  # SMTP 配置留空时不会真正发信；配置后（如 QQ/163/Gmail）验证码走真实邮件发送
+  mail:
+    host: ${SHIGUANG_MAIL_HOST:}
+    port: ${SHIGUANG_MAIL_PORT:465}
+    username: ${SHIGUANG_MAIL_USERNAME:}
+    password: ${SHIGUANG_MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: ${SHIGUANG_MAIL_SMTP_AUTH:true}
+          ssl:
+            enable: ${SHIGUANG_MAIL_SMTP_SSL:true}
+          starttls:
+            enable: ${SHIGUANG_MAIL_SMTP_STARTTLS:false}
+  jackson:
+    # 时间统一输出为 ISO 字符串（如 2026-09-02T10:20:30），方便 RN 端直接展示
+    serialization:
+      write-dates-as-timestamps: false
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.shiguang.entity
+  configuration:
+    # 数据库下划线字段自动映射为 Java 驼峰属性
+    map-underscore-to-camel-case: true
+
+shiguang:
+  jwt:
+    # 本地开发用固定密钥；上线前必须换成环境变量注入的随机密钥
+    secret-key: ${SHIGUANG_JWT_SECRET:shiguang-dev-secret-key-change-me}
+    token-ttl: 2592000000
+  upload:
+    # 上传文件保存目录；默认相对进程工作目录，可用 SHIGUANG_UPLOAD_DIR 覆盖
+    dir: ${SHIGUANG_UPLOAD_DIR:./uploads}
+  email-code:
+    ttl: 300000
+  # 开发模式：邮箱验证码固定 123456 也可通过，并在发送接口中回显 devCode；
+  # 生产环境必须关闭（SHIGUANG_DEV_MODE=false）
+  dev-mode: ${SHIGUANG_DEV_MODE:true}
+  mail:
+    # 发件人地址；留空时使用 spring.mail.username。部分服务商（QQ/163）要求发件人 == 登录账号
+    from: ${SHIGUANG_MAIL_FROM:}
+
+logging:
+  level:
+    com.shiguang: info

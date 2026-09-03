@@ -1,0 +1,131 @@
+# shiguang-server
+
+「拾光」个人内容 App（firstIosApp）的服务端 —— 当前为**邮箱注册 + 账号密码登录**模块。
+
+## 技术栈
+
+- Java 17 + Spring Boot 2.7.3
+- MyBatis（SQL 全部收敛在 `resources/mapper/*.xml`）
+- MySQL 8（本地库名 `shiguang`）
+- Redis（邮箱验证码存储，TTL 自动过期）
+- SMTP 邮件发送（QQ/163/Gmail 等均可，未配置时验证码仅开发模式回显）
+- Lombok / JWT（jjwt 0.9.1）
+- 密码摘要：PBKDF2WithHmacSHA256（随机盐 + 120000 次迭代）
+
+代码分层：`controller -> service -> mapper -> MySQL`，统一返回
+`{code, msg, data}`（code=1 表示成功）。
+
+## 快速启动
+
+前置条件：本机 MySQL 与 Redis 已启动；MySQL root 密码为 123456（可用环境变量覆盖）。
+
+```bash
+# 1. 建库建表（可重复执行）
+mysql -uroot -p123456 < sql/schema.sql
+
+# 2. 写入种子数据（可重复执行）
+mysql -uroot -p123456 shiguang < sql/seed.sql
+
+# 3. 启动
+mvn spring-boot:run
+```
+
+服务默认监听 `http://localhost:8080`（8080 被本机其他 Java 服务占用、8081 被 Node 占用）。
+接口文档（Swagger UI）：`http://localhost:8082/swagger-ui/index.html`，
+`/api/users/**` 这类需登录的接口可在页面右上角 Authorize 里填入 `Bearer <token>` 后直接调试。
+
+MySQL 连接与 JWT 密钥可通过环境变量覆盖：
+
+```bash
+SHIGUANG_DB_HOST=localhost SHIGUANG_DB_PORT=3306 \
+SHIGUANG_DB_USERNAME=root SHIGUANG_DB_PASSWORD=123456 \
+SHIGUANG_JWT_SECRET=your-secret mvn spring-boot:run
+```
+
+Redis 连接默认 `localhost:6379`（无密码），可用 `SHIGUANG_REDIS_HOST` /
+`SHIGUANG_REDIS_PORT` / `SHIGUANG_REDIS_PASSWORD` 覆盖。
+
+### 发送邮件（验证码）
+
+配置 SMTP 后验证码才会真实发送到邮箱；未配置时仅开发模式（默认开启）会在
+日志与响应 `devCode` 中回显，生产模式（`SHIGUANG_DEV_MODE=false`）会直接报错。
+
+QQ 邮箱示例（需要先在 QQ 邮箱开启 SMTP 并获取授权码）：
+
+```bash
+SHIGUANG_MAIL_HOST=smtp.qq.com \
+SHIGUANG_MAIL_PORT=465 \
+SHIGUANG_MAIL_USERNAME=you@qq.com \
+SHIGUANG_MAIL_PASSWORD=授权码 \
+mvn spring-boot:run
+```
+
+常用环境变量：
+
+- `SHIGUANG_MAIL_HOST` / `SHIGUANG_MAIL_PORT`：SMTP 服务器与端口
+- `SHIGUANG_MAIL_USERNAME` / `SHIGUANG_MAIL_PASSWORD`：登录账号与密码/授权码
+- `SHIGUANG_MAIL_FROM`：发件人地址，默认等于登录账号（QQ/163 必须等于账号）
+- `SHIGUANG_MAIL_SMTP_SSL`：SSL（默认 true，对应 465 端口）
+- `SHIGUANG_MAIL_SMTP_STARTTLS`：使用 587 端口时设为 true，并将 SSL 设为 false
+
+## 认证接口
+
+### 邮箱注册（两步）
+
+1. 发送验证码：`POST /api/auth/email-code`，body：`{"email":"demo@shiguang.app"}`
+2. 校验验证码并创建待激活账号：`POST /api/auth/register/email-verify`，body：`{"email":"...","code":"..."}`
+3. 设置密码并激活账号：`POST /api/auth/register/set-password`，body：`{"email":"...","password":"至少6位","nickname":"可选"}`
+
+### 登录
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/auth/login` | 默认登录：邮箱 + 密码，body：`{"email":"...","password":"..."}` |
+| POST | `/api/auth/login/{channel}` | 第三方登录，channel=wechat/douyin/apple（开发模式 mock） |
+| GET | `/api/users/me` | 当前用户信息（需 `Authorization: Bearer <token>`） |
+
+开发模式（默认开启，`SHIGUANG_DEV_MODE=false` 关闭）说明：
+
+- 发送验证码响应带 `devCode`，日志同时打印验证码；
+- 固定验证码 `123456` 可直接通过邮箱验证；
+- 第三方登录使用固定 mock uid（`mock-wechat` 等），命中种子用户 u-1002~u-1004。
+
+登录成功返回：
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": {
+    "token": "...",
+    "user": { "id": "u-xxx", "nickname": "demo", "avatarUrl": null, "bio": "", "tagline": "" }
+  }
+}
+```
+
+## 数据库表
+
+- `users`：邮箱（唯一）、PBKDF2 密码摘要、status（pending=已验证待设置密码，active=可登录）
+- `auth_accounts`：第三方登录绑定关系
+
+邮箱验证码不落库，以 `email:code:{email}` 为键存 Redis（TTL 5 分钟，
+同邮箱重发覆盖旧码，验证通过后立即删除）。
+
+## 目录结构
+
+```text
+src/main/java/com/shiguang/
+├── config/          Web MVC 配置（JWT 拦截器/CORS）
+├── controller/      接口层：AuthController、UserController
+├── service/         业务层：AuthService（邮箱注册/登录/当前用户）
+├── mapper/          MyBatis Mapper 接口
+├── entity/          users / auth_accounts 实体
+├── dto/             认证请求体
+├── vo/              认证返回体
+├── store/           轻量存储（邮箱验证码 Redis 读写）
+├── interceptor/     JWT 鉴权拦截器
+├── result/          统一 Result
+├── exception/       业务异常
+├── handler/         全局异常处理
+└── utils/           JWT、密码摘要工具
+```

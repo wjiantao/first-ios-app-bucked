@@ -1,0 +1,762 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "\u62fe\u5149\u670d\u52a1\u7aef API",
+        "description": "\u300c\u62fe\u5149\u300d\u4e2a\u4eba\u5185\u5bb9 App \u670d\u52a1\u7aef\u63a5\u53e3\u6587\u6863\u3002\n\n\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09\u3002\n\u9700\u767b\u5f55\u7684\u63a5\u53e3\uff08\u7528\u6237/\u5e16\u5b50\uff09\u8bf7\u5728\u53f3\u4e0a\u89d2 Authorize \u4e2d\u586b\u5199 Bearer <token> \u540e\u518d\u8c03\u8bd5\u3002\n\n\u9875\u9762\u5730\u5740\uff1ahttp://localhost:8080/swagger-ui/index.html\n\u539f\u59cb JSON\uff1ahttp://localhost:8080/v3/api-docs\n\u539f\u59cb YAML\uff1ahttp://localhost:8080/v3/api-docs.yaml",
+        "version": "0.1.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "tags": [
+        {
+            "name": "\u8ba4\u8bc1\u63a5\u53e3",
+            "description": "\u90ae\u7bb1\u6ce8\u518c\u4e24\u6b65\u6d41\u7a0b / \u90ae\u7bb1\u5bc6\u7801\u767b\u5f55 / \u7b2c\u4e09\u65b9\u767b\u5f55"
+        },
+        {
+            "name": "\u5e16\u5b50\u63a5\u53e3",
+            "description": "\u9700\u643a\u5e26 JWT \u8bbf\u95ee"
+        },
+        {
+            "name": "\u7528\u6237\u63a5\u53e3",
+            "description": "\u9700\u643a\u5e26 JWT \u8bbf\u95ee"
+        }
+    ],
+    "paths": {
+        "/api/works/page": {
+            "post": {
+                "tags": [
+                    "\u5e16\u5b50\u63a5\u53e3"
+                ],
+                "summary": "\u5206\u9875\u67e5\u8be2\u4f5c\u54c1\u5217\u8868",
+                "description": "\u6309 current/pageSize \u5206\u9875\uff0c\u8fd4\u56de {total, records}\u3002\u652f\u6301 status/keyword \u7b5b\u9009\uff1akeyword \u6309\u6807\u9898\u6a21\u7cca\u5339\u914d\uff1bdeleted \u72b6\u6001\u9ed8\u8ba4\u4e0d\u8fd4\u56de\u3002\u6392\u5e8f\uff1a\u5df2\u53d1\u5e03\u6309\u53d1\u5e03\u65f6\u95f4\u5012\u5e8f\uff0c\u8349\u7a3f\u9000\u5316\u4e3a\u521b\u5efa\u65f6\u95f4\u3002",
+                "operationId": "page",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkPageQueryDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultPageResultWorkVO"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users/update": {
+            "post": {
+                "tags": [
+                    "\u7528\u6237\u63a5\u53e3"
+                ],
+                "summary": "\u4fee\u6539\u5f53\u524d\u7528\u6237\u8d44\u6599",
+                "description": "\u5c40\u90e8\u66f4\u65b0\uff1a\u8bf7\u6c42\u4f53\u4e2d\u4f20 null \u7684\u5b57\u6bb5\u4fdd\u6301\u4e0d\u53d8\uff0c\u53ea\u66f4\u65b0\u4f20\u5165\u7684\u975e\u7a7a\u5b57\u6bb5\uff08nickname/bio/avatarUrl/tagline\uff09\u3002email\u3001status \u4e0d\u5141\u8bb8\u5ba2\u6237\u7aef\u4fee\u6539\u3002",
+                "operationId": "update",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultUserInfoVO"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/common/upload": {
+            "post": {
+                "tags": [
+                    "\u901a\u7528"
+                ],
+                "summary": "\u4e0a\u4f20\u56fe\u7247",
+                "description": "\u8868\u5355\u5b57\u6bb5 file \u4e0a\u4f20\u56fe\u7247\uff0c\u4ec5\u652f\u6301 jpg/jpeg/png/gif/webp\uff0c\u5355\u6587\u4ef6\u4e0d\u8d85\u8fc7 5MB\uff1b\u6210\u529f\u8fd4\u56de\u53ef\u8bbf\u95ee\u7684\u56fe\u7247\u8def\u5f84\uff08/uploads/xxx\uff09\u3002",
+                "operationId": "upload",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultString"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/register/set-password": {
+            "post": {
+                "tags": [
+                    "\u8ba4\u8bc1\u63a5\u53e3"
+                ],
+                "summary": "\u90ae\u7bb1\u6ce8\u518c-\u8bbe\u7f6e\u5bc6\u7801",
+                "description": "\u6ce8\u518c\u7b2c\u4e8c\u6b65\uff1a\u4e3a\u5df2\u901a\u8fc7\u90ae\u7bb1\u9a8c\u8bc1\u7684\u8d26\u53f7\u8bbe\u7f6e\u5bc6\u7801\u5e76\u6fc0\u6d3b\uff08status=active\uff09\u3002\u5bc6\u7801\u81f3\u5c11 6 \u4f4d\uff1b\u6635\u79f0\u53ef\u9009\uff0c\u4e3a\u7a7a\u65f6\u81ea\u52a8\u53d6\u90ae\u7bb1\u524d\u7f00\u3002",
+                "operationId": "completeRegister",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetPasswordDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultBoolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/register/email-verify": {
+            "post": {
+                "tags": [
+                    "\u8ba4\u8bc1\u63a5\u53e3"
+                ],
+                "summary": "\u90ae\u7bb1\u6ce8\u518c-\u6821\u9a8c\u9a8c\u8bc1\u7801",
+                "description": "\u6ce8\u518c\u7b2c\u4e00\u6b65\uff1a\u6821\u9a8c\u9a8c\u8bc1\u7801\u5e76\u521b\u5efa\u5f85\u6fc0\u6d3b\u8d26\u53f7\uff08status=pending\uff09\u3002\u6821\u9a8c\u901a\u8fc7\u540e\u8be5\u90ae\u7bb1\u5373\u88ab\u5360\u7528\uff0c\u968f\u540e\u8c03\u7528 register/set-password \u8bbe\u7f6e\u5bc6\u7801\u3002\u5f00\u53d1\u6a21\u5f0f\u4e0b\u56fa\u5b9a\u9a8c\u8bc1\u7801 123456 \u53ef\u76f4\u63a5\u901a\u8fc7\u3002",
+                "operationId": "verifyEmailForRegister",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterVerifyDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultBoolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "\u8ba4\u8bc1\u63a5\u53e3"
+                ],
+                "summary": "\u90ae\u7bb1\u5bc6\u7801\u767b\u5f55",
+                "description": "\u90ae\u7bb1 + \u5bc6\u7801\u767b\u5f55\uff0c\u6210\u529f\u8fd4\u56de JWT token \u4e0e\u5f53\u524d\u7528\u6237\u4fe1\u606f\u3002\u90ae\u7bb1\u4e0d\u5b58\u5728\u6216\u5bc6\u7801\u9519\u8bef\u65f6\u7edf\u4e00\u8fd4\u56de 401\u3002",
+                "operationId": "loginByEmail",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmailLoginDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultLoginVO"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login/{channel}": {
+            "post": {
+                "tags": [
+                    "\u8ba4\u8bc1\u63a5\u53e3"
+                ],
+                "summary": "\u7b2c\u4e09\u65b9\u767b\u5f55\uff08\u5fae\u4fe1/\u6296\u97f3/Apple\uff09",
+                "description": "channel \u652f\u6301 wechat / douyin / apple\u3002\u82f9\u679c\u767b\u5f55\u4f20 identityToken\uff0c\u5fae\u4fe1/\u6296\u97f3\u4f20 code\uff1b\u5f00\u53d1\u6a21\u5f0f\u4e3a mock \u767b\u5f55\uff0c\u4efb\u610f\u975e\u7a7a\u51ed\u636e\u5747\u53ef\u901a\u8fc7\uff08\u751f\u4ea7\u73af\u5883\u9700\u63a5\u5165\u5f00\u653e\u5e73\u53f0\u6362\u53d6\u771f\u5b9e\u8eab\u4efd\uff09\u3002",
+                "operationId": "socialLogin",
+                "parameters": [
+                    {
+                        "name": "channel",
+                        "in": "path",
+                        "description": "\u7b2c\u4e09\u65b9\u6e20\u9053\uff1awechat / douyin / apple",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "wechat"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SocialLoginDTO"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultLoginVO"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/email-code": {
+            "post": {
+                "tags": [
+                    "\u8ba4\u8bc1\u63a5\u53e3"
+                ],
+                "summary": "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801",
+                "description": "\u6821\u9a8c\u90ae\u7bb1\u683c\u5f0f\u540e\u53d1\u9001 6 \u4f4d\u9a8c\u8bc1\u7801\uff08Redis \u5b58\u50a8\uff0cTTL 5 \u5206\u949f\uff0c\u540c\u90ae\u7bb1\u91cd\u53d1\u4f1a\u8986\u76d6\u65e7\u7801\uff09\u3002\u5df2\u5b8c\u6210\u6ce8\u518c\u7684\u90ae\u7bb1\u4e0d\u5141\u8bb8\u518d\u6b21\u53d1\u9001\u3002\u5f00\u53d1\u6a21\u5f0f\u4e0b\u54cd\u5e94\u56de\u663e devCode\uff0c\u4e14\u56fa\u5b9a\u9a8c\u8bc1\u7801 123456 \u53ef\u76f4\u63a5\u901a\u8fc7\u3002",
+                "operationId": "sendEmailCode",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendEmailCodeDTO"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultSendCodeVO"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "get": {
+                "tags": [
+                    "\u7528\u6237\u63a5\u53e3"
+                ],
+                "summary": "\u83b7\u53d6\u5f53\u524d\u767b\u5f55\u7528\u6237\u4fe1\u606f",
+                "description": "\u4ece JWT \u89e3\u6790\u5f53\u524d\u7528\u6237 ID \u5e76\u8fd4\u56de\u5b8c\u6574\u8d44\u6599\uff0c\u4f9b App \u542f\u52a8\u65f6\u6062\u590d\u4f1a\u8bdd\u6216\u201c\u6211\u7684\u201d\u9875\u5c55\u793a\u3002",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultUserInfoVO"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "WorkPageQueryDTO": {
+                "type": "object",
+                "properties": {
+                    "current": {
+                        "type": "integer",
+                        "description": "\u9875\u7801\uff0c\u4ece 1 \u5f00\u59cb",
+                        "format": "int32",
+                        "example": 1,
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "\u6bcf\u9875\u6761\u6570",
+                        "format": "int32",
+                        "example": 10,
+                        "default": 10
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "\u72b6\u6001\u7b5b\u9009\uff1adraft=\u8349\u7a3f / published=\u5df2\u53d1\u5e03\uff0c\u4e3a\u7a7a\u8868\u793a\u5168\u90e8\uff08deleted \u9ed8\u8ba4\u4e0d\u8fd4\u56de\uff09",
+                        "example": "published"
+                    },
+                    "keyword": {
+                        "type": "string",
+                        "description": "\u6807\u9898\u5173\u952e\u8bcd\uff0c\u6309\u6807\u9898\u6a21\u7cca\u5339\u914d\uff1b\u4e3a\u7a7a\u8868\u793a\u4e0d\u7b5b\u9009",
+                        "example": "\u65c5\u884c"
+                    }
+                },
+                "description": "\u4f5c\u54c1\u5206\u9875\u67e5\u8be2\u8bf7\u6c42\uff08POST /api/works/page\uff09"
+            },
+            "PageResultWorkVO": {
+                "type": "object",
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "description": "\u603b\u8bb0\u5f55\u6570",
+                        "format": "int64",
+                        "example": 32
+                    },
+                    "records": {
+                        "type": "array",
+                        "description": "\u5f53\u524d\u9875\u6570\u636e\u96c6\u5408",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkVO"
+                        }
+                    }
+                },
+                "description": "\u5206\u9875\u67e5\u8be2\u7ed3\u679c"
+            },
+            "ResultPageResultWorkVO": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/PageResultWorkVO"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "WorkVO": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "\u4f5c\u54c1 ID",
+                        "example": "w-1a2b3c4d5e6f"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "\u6807\u9898",
+                        "example": "\u5468\u672b\u7684\u6e56\u8fb9\u65e5\u843d"
+                    },
+                    "coverUrl": {
+                        "type": "string",
+                        "description": "\u5c01\u9762\u56fe URL\uff08/uploads/... \u8def\u5f84\uff09",
+                        "nullable": true,
+                        "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+                    },
+                    "videoUrl": {
+                        "type": "string",
+                        "description": "\u89c6\u9891 URL\uff08\u9884\u7559\u5b57\u6bb5\uff0c\u5f53\u524d\u53d1\u5e03\u6d41\u7a0b\u4e0d\u4f7f\u7528\uff09",
+                        "nullable": true,
+                        "example": "/uploads/video.mp4"
+                    },
+                    "contentMd": {
+                        "type": "string",
+                        "description": "Markdown \u5bcc\u6587\u672c\u6b63\u6587\uff0c\u5a92\u4f53\u4ee5\u5df2\u4e0a\u4f20\u7684 /uploads/... URL \u5f15\u7528",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "\u72b6\u6001\uff1adraft=\u8349\u7a3f / published=\u5df2\u53d1\u5e03 / deleted=\u5df2\u5220\u9664",
+                        "example": "published"
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "description": "\u53d1\u5e03\u65f6\u95f4\uff08ISO 8601\uff09\uff0c\u8349\u7a3f\u4e3a null",
+                        "format": "date-time"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "description": "\u521b\u5efa\u65f6\u95f4\uff08ISO 8601\uff09",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "description": "\u66f4\u65b0\u65f6\u95f4\uff08ISO 8601\uff09",
+                        "format": "date-time"
+                    }
+                },
+                "description": "\u4f5c\u54c1\u4fe1\u606f\uff08\u53d1\u5e03/\u8be6\u60c5/\u5217\u8868\u5171\u7528\uff09"
+            },
+            "UpdateUserDTO": {
+                "type": "object",
+                "properties": {
+                    "nickname": {
+                        "type": "string",
+                        "description": "\u6635\u79f0",
+                        "example": "\u62fe\u5149"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "description": "\u4e2a\u4eba\u7b80\u4ecb",
+                        "example": "\u8bb0\u5f55\u751f\u6d3b\u91cc\u7684\u5149"
+                    },
+                    "avatarUrl": {
+                        "type": "string",
+                        "description": "\u5934\u50cf URL\uff08\u5efa\u8bae\u4f7f\u7528\u901a\u7528\u4e0a\u4f20\u63a5\u53e3\u8fd4\u56de\u7684 /uploads/... \u8def\u5f84\uff09",
+                        "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "description": "\u4e2a\u6027\u7b7e\u540d",
+                        "example": "\u4fdd\u6301\u70ed\u7231"
+                    }
+                },
+                "description": "\u4fee\u6539\u5f53\u524d\u7528\u6237\u8d44\u6599\u8bf7\u6c42\uff1a\u4f20 null \u7684\u5b57\u6bb5\u4fdd\u6301\u4e0d\u53d8\uff0c\u53ea\u66f4\u65b0\u4f20\u5165\u7684\u975e\u7a7a\u5b57\u6bb5"
+            },
+            "ResultUserInfoVO": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/UserInfoVO"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "UserInfoVO": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "\u7528\u6237 ID",
+                        "example": "u-1a2b3c4d5e6f"
+                    },
+                    "nickname": {
+                        "type": "string",
+                        "description": "\u6635\u79f0",
+                        "example": "\u62fe\u5149"
+                    },
+                    "avatarUrl": {
+                        "type": "string",
+                        "description": "\u5934\u50cf URL\uff08/uploads/... \u76f8\u5bf9\u8def\u5f84\u6216\u5b8c\u6574 URL\uff09",
+                        "nullable": true,
+                        "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "description": "\u4e2a\u4eba\u7b80\u4ecb",
+                        "example": "\u8bb0\u5f55\u751f\u6d3b\u91cc\u7684\u5149"
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "description": "\u4e2a\u6027\u7b7e\u540d",
+                        "example": "\u4fdd\u6301\u70ed\u7231"
+                    }
+                },
+                "description": "\u7528\u6237\u4fe1\u606f\uff08\u767b\u5f55\u8fd4\u56de\u4e0e /me \u5171\u7528\uff09"
+            },
+            "ResultString": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "type": "string",
+                        "description": "\u4e1a\u52a1\u6570\u636e\uff1b\u5931\u8d25\u65f6\u4e3a null"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "SetPasswordDTO": {
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "\u90ae\u7bb1\u5730\u5740\uff08\u987b\u5148\u901a\u8fc7 email-verify \u6821\u9a8c\uff09",
+                        "example": "demo@shiguang.app"
+                    },
+                    "password": {
+                        "minLength": 6,
+                        "type": "string",
+                        "description": "\u767b\u5f55\u5bc6\u7801\uff0c\u81f3\u5c11 6 \u4f4d\uff08\u670d\u52a1\u7aef\u4ee5 PBKDF2 \u52a0\u76d0\u6458\u8981\u5b58\u50a8\uff09",
+                        "example": "secret123"
+                    },
+                    "nickname": {
+                        "type": "string",
+                        "description": "\u6635\u79f0\uff0c\u53ef\u9009\uff1b\u4e3a\u7a7a\u65f6\u670d\u52a1\u7aef\u81ea\u52a8\u53d6\u90ae\u7bb1\u524d\u7f00",
+                        "example": "\u62fe\u5149"
+                    }
+                },
+                "description": "\u90ae\u7bb1\u6ce8\u518c\u7b2c\u4e8c\u6b65\uff1a\u8bbe\u7f6e\u5bc6\u7801\u5e76\u6fc0\u6d3b\u8d26\u53f7"
+            },
+            "ResultBoolean": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "type": "boolean",
+                        "description": "\u4e1a\u52a1\u6570\u636e\uff1b\u5931\u8d25\u65f6\u4e3a null"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "RegisterVerifyDTO": {
+                "required": [
+                    "code",
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "\u90ae\u7bb1\u5730\u5740",
+                        "example": "demo@shiguang.app"
+                    },
+                    "code": {
+                        "maxLength": 6,
+                        "minLength": 6,
+                        "type": "string",
+                        "description": "6 \u4f4d\u6570\u5b57\u9a8c\u8bc1\u7801\uff1b\u5f00\u53d1\u6a21\u5f0f\u4e0b\u56fa\u5b9a\u9a8c\u8bc1\u7801 123456 \u4e5f\u53ef\u901a\u8fc7",
+                        "example": "123456"
+                    }
+                },
+                "description": "\u90ae\u7bb1\u6ce8\u518c\u7b2c\u4e00\u6b65\uff1a\u6821\u9a8c\u90ae\u7bb1\u9a8c\u8bc1\u7801"
+            },
+            "EmailLoginDTO": {
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "\u90ae\u7bb1\u5730\u5740",
+                        "example": "demo@shiguang.app"
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "\u767b\u5f55\u5bc6\u7801",
+                        "example": "secret123"
+                    }
+                },
+                "description": "\u90ae\u7bb1 + \u5bc6\u7801\u767b\u5f55\u8bf7\u6c42"
+            },
+            "LoginVO": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "JWT \u4ee4\u724c\uff1b\u540e\u7eed\u8bf7\u6c42\u653e\u5165\u8bf7\u6c42\u5934 Authorization: Bearer <token>",
+                        "example": "eyJhbGciOiJIUzI1NiJ9..."
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/UserInfoVO"
+                    }
+                },
+                "description": "\u767b\u5f55\u6210\u529f\u8fd4\u56de\uff1aJWT token + \u5f53\u524d\u7528\u6237\u4fe1\u606f"
+            },
+            "ResultLoginVO": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/LoginVO"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "SocialLoginDTO": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "\u5fae\u4fe1/\u6296\u97f3\u6388\u6743 code\uff08\u5f00\u53d1\u6a21\u5f0f\u4e0b\u53ef\u4e3a\u4efb\u610f\u975e\u7a7a\u5b57\u7b26\u4e32\uff09",
+                        "example": "wx-auth-code"
+                    },
+                    "identityToken": {
+                        "type": "string",
+                        "description": "Apple \u6388\u6743 identityToken\uff08\u5f00\u53d1\u6a21\u5f0f\u4e0b\u53ef\u4e3a\u4efb\u610f\u975e\u7a7a\u5b57\u7b26\u4e32\uff09",
+                        "example": "apple-identity-token"
+                    }
+                },
+                "description": "\u7b2c\u4e09\u65b9\u767b\u5f55\u8bf7\u6c42\u4f53\uff1a\u82f9\u679c\u767b\u5f55\u4f20 identityToken\uff0c\u5fae\u4fe1/\u6296\u97f3\u4f20 code"
+            },
+            "SendEmailCodeDTO": {
+                "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "\u90ae\u7bb1\u5730\u5740",
+                        "example": "demo@shiguang.app"
+                    }
+                },
+                "description": "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801\u8bf7\u6c42"
+            },
+            "ResultSendCodeVO": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "\u4e1a\u52a1\u7801\uff1a1=\u6210\u529f\uff1b\u5931\u8d25\u65f6\u4e3a\u9519\u8bef\u7801\uff08\u901a\u5e38\u4e0e HTTP \u72b6\u6001\u7801\u4e00\u81f4\uff09",
+                        "format": "int32",
+                        "example": 1
+                    },
+                    "msg": {
+                        "type": "string",
+                        "description": "\u63d0\u793a\u4fe1\u606f\uff1b\u6210\u529f\u65f6\u4e3a success",
+                        "example": "success"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/SendCodeVO"
+                    }
+                },
+                "description": "\u7edf\u4e00\u8fd4\u56de\u7ed3\u6784\uff1a{code, msg, data}\uff0ccode=1 \u8868\u793a\u6210\u529f\uff0c\u5176\u4f59\u4e3a\u5931\u8d25\u7801\uff08\u4e0e HTTP \u72b6\u6001\u7801\u4fdd\u6301\u4e00\u81f4\uff09"
+            },
+            "SendCodeVO": {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                        "description": "\u662f\u5426\u5df2\u53d7\u7406\uff08true\uff09",
+                        "example": true
+                    },
+                    "devCode": {
+                        "type": "string",
+                        "description": "\u5f00\u53d1\u6a21\u5f0f\u56de\u663e\u7684\u9a8c\u8bc1\u7801\uff0c\u65b9\u4fbf\u771f\u673a\u8c03\u8bd5\uff1b\u751f\u4ea7\u73af\u5883\u6052\u4e3a null",
+                        "nullable": true,
+                        "example": "123456"
+                    }
+                },
+                "description": "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801\u7ed3\u679c"
+            }
+        },
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "description": "\u767b\u5f55\u540e\u83b7\u53d6\u7684 token\uff0c\u683c\u5f0f\uff1aBearer <token>",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}

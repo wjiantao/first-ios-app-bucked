@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.UserMapper">
+
+    <!-- map-underscore-to-camel-case=true 已自动处理 password_hash -> passwordHash -->
+    <select id="getById" resultType="com.shiguang.entity.User">
+        SELECT id, email, password_hash, nickname, status, bio, tagline, avatar_url, created_at, updated_at
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <select id="getByEmail" resultType="com.shiguang.entity.User">
+        SELECT id, email, password_hash, nickname, status, bio, tagline, avatar_url, created_at, updated_at
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 注册分两步：先插入 pending 用户，设置密码后再升级 -->
+    <insert id="insert" parameterType="com.shiguang.entity.User">
+        INSERT INTO users (id, email, password_hash, nickname, status, bio, tagline, avatar_url, created_at, updated_at)
+        VALUES (#{id}, #{email}, #{passwordHash}, #{nickname}, #{status}, #{bio}, #{tagline}, #{avatarUrl}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <!-- 密码设置完成后状态改为 active，账号才允许登录 -->
+    <update id="completeRegistration" parameterType="com.shiguang.entity.User">
+        UPDATE users
+        SET password_hash = #{passwordHash},
+            nickname = #{nickname},
+            status = #{status},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 修改用户资料：只更新传入的非空字段（昵称/简介/签名/头像），未传的字段保持不变 -->
+    <update id="update" parameterType="com.shiguang.entity.User">
+        UPDATE users
+        <set>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="bio != null">bio = #{bio},</if>
+            <if test="tagline != null">tagline = #{tagline},</if>
+            <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

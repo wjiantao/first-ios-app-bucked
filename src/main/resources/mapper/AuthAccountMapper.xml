@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.AuthAccountMapper">
+
+    <!-- (channel, channel_uid) 唯一，用于第三方登录时判断是否已有绑定账号 -->
+    <select id="getByChannelAndUid" resultType="com.shiguang.entity.AuthAccount">
+        SELECT id, user_id, channel, channel_uid, created_at
+        FROM auth_accounts
+        WHERE channel = #{channel}
+          AND channel_uid = #{channelUid}
+    </select>
+
+    <insert id="insert" parameterType="com.shiguang.entity.AuthAccount">
+        INSERT INTO auth_accounts (user_id, channel, channel_uid, created_at)
+        VALUES (#{userId}, #{channel}, #{channelUid}, #{createdAt})
+    </insert>
+
+</mapper>

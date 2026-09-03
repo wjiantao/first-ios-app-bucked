@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.TagMapper">
+
+    <!-- 批量插入标签，幂等：uk_tags_name 唯一键使同名标签被 IGNORE，
+         不会产生重复行，也不会把标签与作品关联到已存在的旧标签上。 -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO tags (name, created_at)
+        VALUES
+        <foreach collection="names" item="name" separator=",">
+            (#{name}, NOW())
+        </foreach>
+    </insert>
+
+    <!-- 按标签名集合查询已存在的标签（发布/编辑时把 name 映射为 id） -->
+    <select id="selectByNameIn" resultType="com.shiguang.vo.TagVO">
+        SELECT id,
+               name
+        FROM tags
+        WHERE name IN
+        <foreach collection="names" item="name" open="(" separator="," close=")">
+            #{name}
+        </foreach>
+    </select>
+
+    <!-- 按作品 ID 集合批量查询其所属标签（配套分页结果回填 tags 使用），按标签名升序 -->
+    <select id="selectByWorkIds" resultType="com.shiguang.vo.TagVO">
+        SELECT wt.work_id,
+               t.name
+        FROM work_tags wt
+        JOIN tags t ON t.id = wt.tag_id
+        WHERE wt.work_id IN
+        <foreach collection="workIds" item="workId" open="(" separator="," close=")">
+            #{workId}
+        </foreach>
+        ORDER BY t.name ASC, t.id ASC
+    </select>
+
+    <!-- 查询已存在的全部标签名（去重，按名称升序），供发布页话题联想 -->
+    <select id="listNames" resultType="java.lang.String">
+        SELECT name
+        FROM tags
+        ORDER BY name ASC, id ASC
+    </select>
+
+</mapper>

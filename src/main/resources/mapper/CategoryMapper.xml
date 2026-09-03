@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.CategoryMapper">
+
+    <!-- 查询启用分类（status=1），按展示排序升序返回 -->
+    <select id="list" resultType="com.shiguang.vo.CategoryVO">
+        SELECT id,
+               code,
+               name,
+               sort_order
+        FROM categories
+        WHERE status = 1
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 按作品 ID 集合批量查询启用分类（配套分页结果回填 categories 使用） -->
+    <select id="selectByWorkIds" resultType="com.shiguang.vo.WorkCategoryVO">
+        SELECT wc.work_id,
+               c.id,
+               c.code,
+               c.name,
+               c.sort_order
+        FROM work_categories wc
+        JOIN categories c ON c.id = wc.category_id
+        WHERE c.status = 1
+          AND wc.work_id IN
+        <foreach collection="workIds" item="workId" open="(" separator="," close=")">
+            #{workId}
+        </foreach>
+        ORDER BY c.sort_order ASC, c.id ASC
+    </select>
+
+    <!-- 按 ID 集合过滤出启用中的分类（发布时校验 categoryIds 用） -->
+    <select id="selectEnabledIds" resultType="java.lang.Long">
+        SELECT id
+        FROM categories
+        WHERE status = 1
+          AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>

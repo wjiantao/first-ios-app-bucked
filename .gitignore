@@ -1,0 +1,10 @@
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+# 本机 SMTP 等敏感配置，仅本地生效，禁止提交
+/config/application.yml
+/uploads

@@ -1,0 +1,471 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "拾光服务端 API",
+    "description": "「拾光」个人内容 App 服务端接口文档。\n\n统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）。\n需登录的接口（用户/帖子）请在右上角 Authorize 中填写 Bearer <token> 后再调试。\n\n页面地址：http://localhost:8080/swagger-ui/index.html\n原始 JSON：http://localhost:8080/v3/api-docs\n原始 YAML：http://localhost:8080/v3/api-docs.yaml",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "认证接口"
+        ],
+        "summary": "邮箱密码登录",
+        "description": "邮箱 + 密码登录，成功返回 JWT token 与当前用户信息。邮箱不存在或密码错误时统一返回 401。",
+        "operationId": "loginByEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailLoginDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultLoginVO"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WorkPageQueryDTO": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "integer",
+            "description": "页码，从 1 开始",
+            "format": "int32",
+            "example": 1,
+            "default": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "每页条数",
+            "format": "int32",
+            "example": 10,
+            "default": 10
+          },
+          "status": {
+            "type": "string",
+            "description": "状态筛选：draft=草稿 / published=已发布，为空表示全部（deleted 默认不返回）",
+            "example": "published"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "标题关键词，按标题模糊匹配；为空表示不筛选",
+            "example": "旅行"
+          }
+        },
+        "description": "作品分页查询请求（POST /api/works/page）"
+      },
+      "PageResultWorkVO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "总记录数",
+            "format": "int64",
+            "example": 32
+          },
+          "records": {
+            "type": "array",
+            "description": "当前页数据集合",
+            "items": {
+              "$ref": "#/components/schemas/WorkVO"
+            }
+          }
+        },
+        "description": "分页查询结果"
+      },
+      "ResultPageResultWorkVO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResultWorkVO"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "WorkVO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "作品 ID",
+            "example": "w-1a2b3c4d5e6f"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题",
+            "example": "周末的湖边日落"
+          },
+          "coverUrl": {
+            "type": "string",
+            "description": "封面图 URL（/uploads/... 路径）",
+            "nullable": true,
+            "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+          },
+          "videoUrl": {
+            "type": "string",
+            "description": "视频 URL（预留字段，当前发布流程不使用）",
+            "nullable": true,
+            "example": "/uploads/video.mp4"
+          },
+          "contentMd": {
+            "type": "string",
+            "description": "Markdown 富文本正文，媒体以已上传的 /uploads/... URL 引用",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "状态：draft=草稿 / published=已发布 / deleted=已删除",
+            "example": "published"
+          },
+          "publishedAt": {
+            "type": "string",
+            "description": "发布时间（ISO 8601），草稿为 null",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "创建时间（ISO 8601）",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "更新时间（ISO 8601）",
+            "format": "date-time"
+          }
+        },
+        "description": "作品信息（发布/详情/列表共用）"
+      },
+      "UpdateUserDTO": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "description": "昵称",
+            "example": "拾光"
+          },
+          "bio": {
+            "type": "string",
+            "description": "个人简介",
+            "example": "记录生活里的光"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "头像 URL（建议使用通用上传接口返回的 /uploads/... 路径）",
+            "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+          },
+          "tagline": {
+            "type": "string",
+            "description": "个性签名",
+            "example": "保持热爱"
+          }
+        },
+        "description": "修改当前用户资料请求：传 null 的字段保持不变，只更新传入的非空字段"
+      },
+      "ResultUserInfoVO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserInfoVO"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "UserInfoVO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "用户 ID",
+            "example": "u-1a2b3c4d5e6f"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "昵称",
+            "example": "拾光"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "头像 URL（/uploads/... 相对路径或完整 URL）",
+            "nullable": true,
+            "example": "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg"
+          },
+          "bio": {
+            "type": "string",
+            "description": "个人简介",
+            "example": "记录生活里的光"
+          },
+          "tagline": {
+            "type": "string",
+            "description": "个性签名",
+            "example": "保持热爱"
+          }
+        },
+        "description": "用户信息（登录返回与 /me 共用）"
+      },
+      "ResultString": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "type": "string",
+            "description": "业务数据；失败时为 null"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "SetPasswordDTO": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱地址（须先通过 email-verify 校验）",
+            "example": "demo@shiguang.app"
+          },
+          "password": {
+            "minLength": 6,
+            "type": "string",
+            "description": "登录密码，至少 6 位（服务端以 PBKDF2 加盐摘要存储）",
+            "example": "secret123"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "昵称，可选；为空时服务端自动取邮箱前缀",
+            "example": "拾光"
+          }
+        },
+        "description": "邮箱注册第二步：设置密码并激活账号"
+      },
+      "ResultBoolean": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "type": "boolean",
+            "description": "业务数据；失败时为 null"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "RegisterVerifyDTO": {
+        "required": [
+          "code",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱地址",
+            "example": "demo@shiguang.app"
+          },
+          "code": {
+            "maxLength": 6,
+            "minLength": 6,
+            "type": "string",
+            "description": "6 位数字验证码；开发模式下固定验证码 123456 也可通过",
+            "example": "123456"
+          }
+        },
+        "description": "邮箱注册第一步：校验邮箱验证码"
+      },
+      "EmailLoginDTO": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱地址",
+            "example": "demo@shiguang.app"
+          },
+          "password": {
+            "type": "string",
+            "description": "登录密码",
+            "example": "secret123"
+          }
+        },
+        "description": "邮箱 + 密码登录请求"
+      },
+      "LoginVO": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "JWT 令牌；后续请求放入请求头 Authorization: Bearer <token>",
+            "example": "eyJhbGciOiJIUzI1NiJ9..."
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserInfoVO"
+          }
+        },
+        "description": "登录成功返回：JWT token + 当前用户信息"
+      },
+      "ResultLoginVO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "$ref": "#/components/schemas/LoginVO"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "SocialLoginDTO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "微信/抖音授权 code（开发模式下可为任意非空字符串）",
+            "example": "wx-auth-code"
+          },
+          "identityToken": {
+            "type": "string",
+            "description": "Apple 授权 identityToken（开发模式下可为任意非空字符串）",
+            "example": "apple-identity-token"
+          }
+        },
+        "description": "第三方登录请求体：苹果登录传 identityToken，微信/抖音传 code"
+      },
+      "SendEmailCodeDTO": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱地址",
+            "example": "demo@shiguang.app"
+          }
+        },
+        "description": "发送邮箱验证码请求"
+      },
+      "ResultSendCodeVO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务码：1=成功；失败时为错误码（通常与 HTTP 状态码一致）",
+            "format": "int32",
+            "example": 1
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息；成功时为 success",
+            "example": "success"
+          },
+          "data": {
+            "$ref": "#/components/schemas/SendCodeVO"
+          }
+        },
+        "description": "统一返回结构：{code, msg, data}，code=1 表示成功，其余为失败码（与 HTTP 状态码保持一致）"
+      },
+      "SendCodeVO": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "是否已受理（true）",
+            "example": true
+          },
+          "devCode": {
+            "type": "string",
+            "description": "开发模式回显的验证码，方便真机调试；生产环境恒为 null",
+            "nullable": true,
+            "example": "123456"
+          }
+        },
+        "description": "发送邮箱验证码结果"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "description": "登录后获取的 token，格式：Bearer <token>",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

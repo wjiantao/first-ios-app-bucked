@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.WorkMapper">
+
+    <!-- Haversine 球面距离（公里），@param latitude/longitude 为查询中心，
+         列 latitude/longitude 为作品坐标。SELECT（AS distance）与 WHERE（过滤）共用，保证口径一致。 -->
+    <sql id="haversineKm">
+        (6371 * ACOS(
+            LEAST(1.0, GREATEST(-1.0,
+                COS(RADIANS(#{latitude})) * COS(RADIANS(latitude)) *
+                COS(RADIANS(longitude) - RADIANS(#{longitude})) +
+                SIN(RADIANS(#{latitude})) * SIN(RADIANS(latitude))
+            ))
+        ))
+    </sql>
+
+    <!-- 分页查询附近的作品：只返回已发布且带坐标的作品，按距离升序。
+         先用包围盒缩小扫描范围，再用精确 Haversine 距离过滤，distance 保留给客户端展示。 -->
+    <select id="pageNearby" resultType="com.shiguang.vo.WorkVO">
+        SELECT id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = works.id) AS like_count,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = works.id) AS favorite_count,
+               <include refid="haversineKm"/> AS distance
+        FROM works
+        <where>
+            status = 'published'
+            AND latitude IS NOT NULL
+            AND longitude IS NOT NULL
+            AND latitude BETWEEN #{minLat} AND #{maxLat}
+            AND longitude BETWEEN #{minLng} AND #{maxLng}
+            AND <include refid="haversineKm"/> &lt;= #{radiusKm}
+        </where>
+        ORDER BY distance ASC, id DESC
+    </select>
+
+    <!-- 分页查询作品列表（配套 PageHelper.startPage 使用）。
+         默认不返回已软删除(status='deleted')的作品；
+         categoryId / status / keyword 为可选筛选：keyword 按标题模糊匹配，
+         categoryId 通过 work_categories 关联过滤。
+         排序：已发布按 published_at 倒序，未发布(草稿)退化为 created_at，保证 feed 稳定。 -->
+        <select id="pageQuery" resultType="com.shiguang.vo.WorkVO">
+            SELECT id,
+                   title,
+                   cover_url,
+                   video_url,
+                   latitude,
+                   longitude,
+                   location_name,
+                   content_md,
+                   status,
+                   published_at,
+                   created_at,
+                   updated_at,
+                   (SELECT COUNT(*) FROM work_likes wl
+                    WHERE wl.work_id = works.id) AS like_count,
+                   (SELECT COUNT(*) FROM work_favorites wf
+                    WHERE wf.work_id = works.id) AS favorite_count
+            FROM works
+        <where>
+            status != 'deleted'
+            <if test="categoryId != null">
+                AND EXISTS (
+                    SELECT 1 FROM work_categories wc
+                    WHERE wc.work_id = works.id AND wc.category_id = #{categoryId}
+                )
+            </if>
+            <if test="tag != null and tag != ''">
+                AND EXISTS (
+                    SELECT 1 FROM work_tags wt
+                    JOIN tags t ON t.id = wt.tag_id
+                    WHERE wt.work_id = works.id AND t.name = #{tag}
+                )
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND title LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+    </select>
+
+    <!-- 发布/保存草稿：插入作品主记录。
+         content_text 当前不落库，等纯文本抽取实现后再补写。 -->
+    <insert id="insert" parameterType="com.shiguang.entity.Work">
+        INSERT INTO works (id, author_id, title, cover_url, video_url,
+                           latitude, longitude, location_name,
+                           content_md, status, published_at, created_at, updated_at)
+        VALUES (#{id}, #{authorId}, #{title}, #{coverUrl}, #{videoUrl},
+                #{latitude}, #{longitude}, #{locationName},
+                #{contentMd}, #{status}, #{publishedAt}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <!-- 批量写入作品-分类关联：一条 INSERT 多行，随作品插入同事务提交 -->
+    <insert id="insertWorkCategories">
+        INSERT INTO work_categories (work_id, category_id)
+        VALUES
+        <foreach collection="categoryIds" item="categoryId" separator=",">
+            (#{workId}, #{categoryId})
+        </foreach>
+    </insert>
+
+    <!-- 编辑时先删除旧分类关联，再按新集合重建 -->
+    <delete id="deleteWorkCategories">
+        DELETE FROM work_categories
+        WHERE work_id = #{workId}
+    </delete>
+
+    <!-- 批量写入作品-标签关联：一条 INSERT 多行，随作品编辑同事务提交 -->
+    <insert id="insertWorkTags">
+        INSERT INTO work_tags (work_id, tag_id)
+        VALUES
+        <foreach collection="tagIds" item="tagId" separator=",">
+            (#{workId}, #{tagId})
+        </foreach>
+    </insert>
+
+    <!-- 编辑时先删除旧标签关联，再按新集合重建 -->
+    <delete id="deleteWorkTags">
+        DELETE FROM work_tags
+        WHERE work_id = #{workId}
+    </delete>
+
+    <!-- 发布后按 ID 回查作品（不含软删除），与 pageQuery 字段保持一致 -->
+    <select id="getById" resultType="com.shiguang.vo.WorkVO">
+        SELECT id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = works.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = works.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = works.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = works.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited
+        FROM works
+        WHERE id = #{id}
+          AND status != 'deleted'
+    </select>
+
+    <!-- 编辑接口读取作品主记录（含作者/状态），用于作者校验与状态合并 -->
+    <select id="selectById" resultType="com.shiguang.entity.Work">
+        SELECT id,
+               author_id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at
+        FROM works
+        WHERE id = #{id}
+    </select>
+
+    <!-- 局部更新作品主记录：标量字段传 null 保持不变；
+         published_at 由服务端按最终状态计算（published 且未置位则置 now，draft 则为 null），
+         updated_at 始终刷新。 -->
+    <update id="update" parameterType="com.shiguang.entity.Work">
+        UPDATE works
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="videoUrl != null">video_url = #{videoUrl},</if>
+            <if test="contentMd != null">content_md = #{contentMd},</if>
+            <if test="status != null">status = #{status},</if>
+            published_at = #{publishedAt},
+            updated_at = #{updatedAt}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 单独更新地理位置（整体覆盖）：三个字段都可能为 null，
+         传 null 即清除位置，与 update 的“null=保持不变”语义不同。 -->
+    <update id="updateLocation">
+        UPDATE works
+        SET latitude = #{latitude},
+            longitude = #{longitude},
+            location_name = #{locationName},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- INSERT IGNORE：重复点赞不报错、不产生第二行，天然幂等 -->
+    <insert id="insertLike">
+        INSERT IGNORE INTO work_likes (user_id, work_id, created_at)
+        VALUES (#{userId}, #{workId}, #{createdAt})
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE FROM work_likes
+        WHERE user_id = #{userId} AND work_id = #{workId}
+    </delete>
+
+    <select id="countLikes" resultType="long">
+        SELECT COUNT(*)
+        FROM work_likes
+        WHERE work_id = #{workId}
+    </select>
+
+    <!-- INSERT IGNORE：重复收藏不报错、不产生第二行，天然幂等 -->
+    <insert id="insertFavorite">
+        INSERT IGNORE INTO work_favorites (user_id, work_id, created_at)
+        VALUES (#{userId}, #{workId}, #{createdAt})
+    </insert>
+
+    <delete id="deleteFavorite">
+        DELETE FROM work_favorites
+        WHERE user_id = #{userId} AND work_id = #{workId}
+    </delete>
+
+    <select id="countFavorites" resultType="long">
+        SELECT COUNT(*)
+        FROM work_favorites
+        WHERE work_id = #{workId}
+    </select>
+
+    <!-- “我的作品”分页：只返回当前用户已发布的作品，
+         供个人主页“作品”Tab 使用，按发布时间倒序。 -->
+    <select id="pageMyWorks" resultType="com.shiguang.vo.WorkVO">
+        SELECT id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = works.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = works.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = works.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = works.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited
+        FROM works
+        WHERE author_id = #{userId}
+          AND status = 'published'
+        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+    </select>
+
+    <!-- “我的喜欢”分页：以 work_likes 为驱动表 JOIN works，
+         只返回当前用户点赞过的已发布作品，并按点赞时间倒序；
+         liked_at 输出点赞时间，供前端展示“喜欢于 …”。 -->
+    <select id="pageMyLikes" resultType="com.shiguang.vo.WorkVO">
+        SELECT w.id,
+               w.title,
+               w.cover_url,
+               w.video_url,
+               w.latitude,
+               w.longitude,
+               w.location_name,
+               w.content_md,
+               w.status,
+               w.published_at,
+               w.created_at,
+               w.updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = w.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = w.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = w.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = w.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited,
+               l.created_at AS liked_at
+        FROM work_likes l
+                 JOIN works w ON w.id = l.work_id
+        WHERE l.user_id = #{userId}
+          AND w.status = 'published'
+        ORDER BY l.created_at DESC, w.id DESC
+    </select>
+
+    <!-- “我的收藏”分页：以 work_favorites 为驱动表 JOIN works，
+         只返回已发布未删除的作品，并按收藏时间倒序；
+         favorited_at 输出收藏时间，供前端展示“收藏于 …”。 -->
+    <select id="pageMyFavorites" resultType="com.shiguang.vo.WorkVO">
+        SELECT w.id,
+               w.title,
+               w.cover_url,
+               w.video_url,
+               w.latitude,
+               w.longitude,
+               w.location_name,
+               w.content_md,
+               w.status,
+               w.published_at,
+               w.created_at,
+               w.updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = w.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = w.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = w.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = w.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited,
+               f.created_at AS favorited_at
+        FROM work_favorites f
+                 JOIN works w ON w.id = f.work_id
+        WHERE f.user_id = #{userId}
+          AND w.status = 'published'
+        ORDER BY f.created_at DESC, w.id DESC
+    </select>
+
+</mapper>
