@@ -1,12 +1,12 @@
-# Render Blueprint：在 Render 中一键创建「拾光」服务端所需的全部资源。
+# Render Blueprint：在 Render 中一键创建「拾光」服务端所需的资源（全部免费项）。
 # 使用方式：Render Dashboard -> New -> Blueprint -> 连接本仓库。
 #
 # 资源说明：
 #   1. shiguang-server   —— Spring Boot 后端（Docker，免费 Web 服务）
-#   2. shiguang-mysql    —— MySQL 8（Docker + 持久盘，私有服务；无免费档，需付费）
-#   3. shiguang-redis    —— Redis / Render Key Value（免费档，仅存验证码等临时数据）
+#   2. shiguang-redis    —— Redis / Render Key Value（免费档，仅存验证码等临时数据）
 #
-# 敏感信息（MySQL 密码、SMTP、JPush）在首次创建 Blueprint 时由 Render 提示填写，
+# 数据库使用第三方免费 TiDB Cloud（MySQL 兼容，建库建表已执行完成）。
+# 敏感信息（TiDB 连接信息、SMTP、JPush）在首次创建 Blueprint 时由 Render 提示填写，
 # 不会写入仓库明文。免费 Web 服务无法对外发送 465/587 端口的 SMTP 邮件，
 # 如需真实发送邮箱验证码，请把 shiguang-server 升级为付费档或改用 HTTP 邮件服务。
 
@@ -26,22 +26,17 @@ services:
       - key: SHIGUANG_JWT_SECRET
         generateValue: true
 
-      # MySQL：通过私有服务引用自动注入内部主机名与端口
+      # 第三方 TiDB Cloud（MySQL 兼容），连接信息在创建 Blueprint 时填写
       - key: SHIGUANG_DB_HOST
-        fromService:
-          name: shiguang-mysql
-          type: pserv
-          property: host
+        sync: false
       - key: SHIGUANG_DB_PORT
-        fromService:
-          name: shiguang-mysql
-          type: pserv
-          property: port
+        value: "4000"
       - key: SHIGUANG_DB_USERNAME
-        value: shiguang
-
-      # 数据库密码与 MySQL 服务共用同一个 MYSQL_PASSWORD
-      - fromGroup: shiguang-db-secrets
+        sync: false
+      - key: SHIGUANG_DB_PASSWORD
+        sync: false
+      - key: SHIGUANG_DB_SSL_MODE
+        value: "REQUIRED"
 
       # Redis：通过 Key Value 服务引用自动注入
       - key: SHIGUANG_REDIS_HOST
@@ -75,32 +70,6 @@ services:
       - key: SHIGUANG_JPUSH_APNS_PRODUCTION
         sync: false
 
-  - type: pserv
-    name: shiguang-mysql
-    runtime: docker
-    dockerfilePath: ./docker/mysql/Dockerfile
-    dockerContext: .
-    plan: "0.5c-512mb"
-    autoDeployTrigger: off
-    envVars:
-      - key: MYSQL_DATABASE
-        value: shiguang
-      - key: MYSQL_USER
-        value: shiguang
-      - key: MYSQL_ROOT_PASSWORD
-        sync: false
-      - fromGroup: shiguang-db-secrets
-    disk:
-      name: mysql-data
-      mountPath: /var/lib/mysql
-      sizeGB: 10
-
   - type: keyvalue
     name: shiguang-redis
     plan: free
-
-envVarGroups:
-  - name: shiguang-db-secrets
-    envVars:
-      - key: MYSQL_PASSWORD
-        sync: false
