@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 作品视图对象（发布/详情/列表共用）。
  *
- * 对应 works 表：status 为 draft（草稿）/ published（已发布）/ deleted（已软删除）。
+ * 对应 works 表：status 为 draft（草稿）/ published（已发布）/ offline（下架）/ deleted（已软删除）。
  * publishedAt 在发布时置位，createdAt/updatedAt 输出为 ISO 字符串（见 jackson 配置）。
  */
 @Data
@@ -68,7 +68,7 @@ public class WorkVO {
     @Schema(description = "Markdown 富文本正文，媒体以已上传的 /uploads/... URL 引用", nullable = true)
     private String contentMd;
 
-    @Schema(description = "状态：draft=草稿 / published=已发布 / deleted=已删除", example = "published")
+    @Schema(description = "状态：draft=草稿 / published=已发布 / offline=下架 / deleted=已删除", example = "published")
     private String status;
 
     @Schema(description = "发布时间（ISO 8601），草稿为 null", example = "2026-09-02T10:20:30")

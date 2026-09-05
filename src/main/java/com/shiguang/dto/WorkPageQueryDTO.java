@@ -7,7 +7,7 @@ import lombok.Data;
  * 作品分页查询请求体（POST /api/works/page）。
  *
  * current/pageSize 缺省为 1/10；categoryId/status/keyword 不传表示不筛选。
- * keyword 按标题模糊匹配，status 取值 draft/published（不含 deleted，软删除作品默认不返回）。
+ * keyword 按标题模糊匹配，status 取值 draft/published/offline；不传时默认不返回 deleted 与 offline。
  * tag 按标签名精确匹配（自由文本标签），不传表示不按标签筛选。
  */
 @Data
@@ -26,8 +26,8 @@ public class WorkPageQueryDTO {
     @Schema(description = "分类筛选：对应 categories.id，为空表示全部分类", example = "1")
     private Long categoryId;
 
-    /** 状态筛选：draft=草稿 / published=已发布，为空表示全部（deleted 不参与查询）。 */
-    @Schema(description = "状态筛选：draft=草稿 / published=已发布，为空表示全部（deleted 默认不返回）", example = "published")
+    /** 状态筛选：draft=草稿 / published=已发布 / offline=下架；为空时默认不返回 deleted 与 offline。 */
+    @Schema(description = "状态筛选：draft=草稿 / published=已发布 / offline=下架；为空时默认不返回 deleted 与 offline", example = "published")
     private String status;
 
     /** 标题关键词，模糊匹配；为空表示不按标题筛选。 */

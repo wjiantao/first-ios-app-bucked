@@ -5,7 +5,9 @@ import com.shiguang.dto.NearbyWorksQueryDTO;
 import com.shiguang.dto.WorkPageQueryDTO;
 import com.shiguang.entity.Work;
 import com.shiguang.vo.WorkVO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -127,12 +129,26 @@ public interface WorkMapper {
                         @Param("locationName") String locationName);
 
     /**
-     * 点赞
-      * @param userId
-     * @param workId
-     * @param createdAt
-     */    
-    void insertLike(String userId, String workId, LocalDateTime createdAt);
+     * 点赞（INSERT IGNORE 幂等）。
+     *
+     * @param userId    触发者用户 ID
+     * @param workId    被点赞作品 ID
+     * @param createdAt 点赞时间
+     * @return 影响行数：1 表示本次确实新增了一条点赞，0 表示此前已点过赞（未重复计数）
+     */
+    int insertLike(String userId, String workId, LocalDateTime createdAt);
+
+    /**
+     * 记录一次作品浏览（GET /api/works/{id} 成功打开已发布作品时调用）。
+     *
+     * 用于创作中心「数据概览」统计累计与今日新增浏览量；
+     * 是否落库（作者本人、未发布作品除外）由服务层判断，这里的 MySQL 不设任何去重。
+     *
+     * @param viewerId  浏览者用户 ID
+     * @param workId    被浏览作品 ID
+     * @param createdAt 浏览时间（服务端本地时区）
+     */
+    void insertView(String viewerId, String workId, LocalDateTime createdAt);
 
     /**
      * 获取点赞数量
@@ -143,7 +159,15 @@ public interface WorkMapper {
 
     void deleteLike(String userId, String workId);
 
-    void insertFavorite(String userId, String workId, LocalDateTime createdAt);
+    /**
+     * 收藏（INSERT IGNORE 幂等）。
+     *
+     * @param userId    触发者用户 ID
+     * @param workId    被收藏作品 ID
+     * @param createdAt 收藏时间
+     * @return 影响行数：1 表示本次确实新增了一条收藏，0 表示此前已收藏过（未重复计数）
+     */
+    int insertFavorite(String userId, String workId, LocalDateTime createdAt);
 
     void deleteFavorite(String userId, String workId);
 
@@ -158,7 +182,30 @@ public interface WorkMapper {
     Page<WorkVO> pageMyWorks(@Param("userId") String userId);
 
     /**
-     * 当前用户收藏作品分页（个人主页“收藏”Tab）。
+     * 当前用户作品管理列表分页（个人主页“作品管理”页）。
+     *
+     * <p>与 {@link #pageMyWorks} 不同：管理页需要展示“已发布 + 已下架”的作品，
+     * 以便作者识别被隐藏的内容并重新发布；草稿仍由 {@link #pageMyDrafts} 单独处理。
+     * 按 author_id = userId 且 status IN ('published','offline') 过滤。</p>
+     *
+     * @param userId 当前登录用户 ID
+     * @return 分页结果，配合 PageHelper.startPage 使用
+     */
+    Page<WorkVO> pageMyManageWorks(@Param("userId") String userId);
+
+    /**
+     * 当前用户草稿作品分页（个人主页"草稿"Tab）。
+     *
+     * <p>草稿属于作者的私密内容，只能作者本人查看；列表不对外公开，
+     * 因此按 author_id = userId 且 status = 'draft' 过滤。</p>
+     *
+     * @param userId 当前登录用户 ID
+     * @return 草稿作品分页，配合 PageHelper.startPage 使用
+     */
+    Page<WorkVO> pageMyDrafts(@Param("userId") String userId);
+
+    /**
+     * 当前用户收藏作品分页（个人主页"收藏"Tab）。
      *
      * @param userId 当前登录用户 ID
      * @return 收藏的已发布作品分页，配合 PageHelper.startPage 使用
@@ -172,4 +219,19 @@ public interface WorkMapper {
      * @return 点赞过的已发布作品分页，配合 PageHelper.startPage 使用
      */
     Page<WorkVO> pageMyLikes(@Param("userId") String userId);
+
+    /**
+     * 获取作品数量
+     * @param userId
+     * @return
+     */
+    @Select("SELECT COUNT(*) FROM works WHERE author_id = #{userId}")
+    Integer total(String userId);
+
+    /**
+     * 删除作品
+     * @param id
+     */
+    @Delete("DELETE FROM works where id = #{id}")
+    void delete(String id);
 }

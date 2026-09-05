@@ -77,10 +77,39 @@ public class UserController {
     }
 
     /**
+     * 我的作品管理分页（需登录）。
+     *
+     * 与“我的作品”不同：作品管理页需要同时看到“已发布 + 已下架”的作品，
+     * 以便作者对被隐藏的作品执行重新发布；个人主页“作品”Tab 仍只看已发布。
+     */
+    @Operation(summary = "我的作品管理（分页）",
+            description = "从 JWT 解析当前用户，返回其已发布及已下架作品，按发布时间倒序；"
+                    + "供“作品管理”页展示，便于下架与重新发布。")
+    @GetMapping("/me/manage-works")
+    public Result<PageResult<WorkVO>> myManageWorks(ProfilePageQueryDTO profilePageQueryDTO) {
+        log.info("我的作品管理分页：{}", profilePageQueryDTO);
+        return Result.success(workService.pageMyManageWorks(profilePageQueryDTO));
+    }
+
+    /**
+     * 我的草稿分页（需登录）。
+     *
+     * 返回当前用户的草稿作品，按创建时间倒序，
+     * 供个人主页"草稿"Tab 使用。草稿属于未发布的私密内容，仅作者本人可见。
+     */
+    @Operation(summary = "我的草稿（分页）",
+            description = "从 JWT 解析当前用户，返回其草稿作品，按创建时间倒序。")
+    @GetMapping("/me/drafts")
+    public Result<PageResult<WorkVO>> myDrafts(ProfilePageQueryDTO profilePageQueryDTO) {
+        log.info("我的草稿分页：{}", profilePageQueryDTO);
+        return Result.success(workService.pageMyDrafts(profilePageQueryDTO));
+    }
+
+    /**
      * 我的收藏分页（需登录）。
      *
      * 返回当前用户收藏的已发布作品，按收藏时间倒序，
-     * 供个人主页“收藏”Tab 使用。
+     * 供个人主页"收藏"Tab 使用。
      */
     @Operation(summary = "我的收藏（分页）",
             description = "从 JWT 解析当前用户，返回收藏的已发布作品，按收藏时间倒序。")

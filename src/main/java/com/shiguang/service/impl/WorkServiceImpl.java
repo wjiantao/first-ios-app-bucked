@@ -12,6 +12,9 @@ import com.shiguang.mapper.CategoryMapper;
 import com.shiguang.mapper.TagMapper;
 import com.shiguang.mapper.WorkMapper;
 import com.shiguang.result.PageResult;
+import com.shiguang.service.NotificationService;
+import com.shiguang.service.PushService;
+import com.shiguang.service.RealtimePushService;
 import com.shiguang.service.WorkService;
 import com.shiguang.vo.CategoryVO;
 import com.shiguang.vo.FavoriteResultVO;
@@ -41,9 +44,11 @@ import java.util.UUID;
 @Slf4j
 public class WorkServiceImpl implements WorkService {
 
-    private static final Set<String> WORK_STATUSES = Set.of("draft", "published");
+    private static final Set<String> WORK_STATUSES = Set.of("draft", "published", "offline");
     private static final String STATUS_DRAFT = "draft";
     private static final String STATUS_PUBLISHED = "published";
+    private static final String STATUS_OFFLINE = "offline";
+    private static final String STATUS_DELETED = "deleted";
     private static final int MAX_TAG_LENGTH = 30;
     private static final int MAX_TAG_COUNT = 10;
 
@@ -55,6 +60,15 @@ public class WorkServiceImpl implements WorkService {
 
     @Autowired
     private TagMapper tagMapper;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private PushService pushService;
+
+    @Autowired
+    private RealtimePushService realtimePushService;
 
     /**
      * 分页查询帖子
@@ -81,24 +95,11 @@ public class WorkServiceImpl implements WorkService {
      */
     @Override
     public PageResult<WorkVO> pageNearby(NearbyWorksQueryDTO nearbyWorksQueryDTO) {
-        if (nearbyWorksQueryDTO == null) {
-            throw new BusinessException("请求体不能为空");
-        }
 
         Double latitude = nearbyWorksQueryDTO.getLatitude();
         Double longitude = nearbyWorksQueryDTO.getLongitude();
-        validateCoordinates(latitude, longitude);
-        if (latitude == null || longitude == null) {
-            throw new BusinessException("查询附近作品必须提供中心经纬度");
-        }
 
         double radiusKm = nearbyWorksQueryDTO.getRadiusKm() == null ? 5.0 : nearbyWorksQueryDTO.getRadiusKm();
-        if (radiusKm <= 0) {
-            throw new BusinessException("搜索半径必须大于 0");
-        }
-        if (radiusKm > 500) {
-            throw new BusinessException("搜索半径过大（最多 500 公里）");
-        }
 
         // 经纬度包围盒：纬度经度各自的半宽，用于缩小数据库扫描范围。
         double latDelta = radiusKm / 111.32;
@@ -138,29 +139,13 @@ public class WorkServiceImpl implements WorkService {
     @Override
     @Transactional
     public WorkVO insert(WorkPublishDTO workPublishDTO) {
-        if (workPublishDTO == null) {
-            throw new BusinessException("请求体不能为空");
-        }
 
         String status = workPublishDTO.getStatus();
-        if (status == null || status.isBlank()) {
-            status = STATUS_DRAFT;
-        }
-        if (!WORK_STATUSES.contains(status)) {
-            throw new BusinessException("不支持的作品状态: " + status);
-        }
         boolean published = STATUS_PUBLISHED.equals(status);
-
-        if (published && (workPublishDTO.getTitle() == null || workPublishDTO.getTitle().isBlank())) {
-            throw new BusinessException("发布作品时标题不能为空");
-        }
 
         List<Long> categoryIds = workPublishDTO.getCategoryIds() == null
                 ? Collections.emptyList()
                 : workPublishDTO.getCategoryIds().stream().distinct().toList();
-        if (published && categoryIds.isEmpty()) {
-            throw new BusinessException("发布作品时至少选择一个分类");
-        }
         if (!categoryIds.isEmpty()) {
             validateCategories(categoryIds);
         }
@@ -169,9 +154,6 @@ public class WorkServiceImpl implements WorkService {
         List<String> tags = normalizeTags(workPublishDTO.getTags());
 
         String authorId = UserContext.getCurrentId();
-        if (authorId == null) {
-            throw new BusinessException(401, "未登录或登录已过期");
-        }
 
         LocalDateTime now = LocalDateTime.now();
         Work work = new Work();
@@ -215,13 +197,21 @@ public class WorkServiceImpl implements WorkService {
 
     @Override
     public WorkVO getById(String id) {
+        String userId = UserContext.getCurrentId();
+        // 先按主记录读取作者与状态，用于“草稿/下架作品仅作者可见”的访问控制，
+        // 避免未发布或已下架的内容被其他用户通过 ID 遍历到。
+        Work work = workMapper.selectById(id);
         // 详情接口要求登录：传入当前用户 ID，让返回的 liked 表示
         // “这个用户是否点过赞”，客户端可直接渲染爱心选中态。
-        WorkVO workVO = workMapper.getById(id, UserContext.getCurrentId());
+        WorkVO workVO = workMapper.getById(id, userId);
         fillCategories(Collections.singletonList(workVO));
         fillTags(Collections.singletonList(workVO));
-        log.info("查看作品: {}",
-                workVO);
+        // 统计“浏览量”：成功打开已发布作品即落一条记录（含作者本人，单作者 App 阶段
+        // 作者即主要浏览者）；草稿/下架不产生公开浏览。
+        if (STATUS_PUBLISHED.equals(work.getStatus())) {
+            workMapper.insertView(userId, work.getId(), LocalDateTime.now());
+        }
+        log.info("查看作品: {}", workVO);
         return workVO;
     }
 
@@ -235,40 +225,23 @@ public class WorkServiceImpl implements WorkService {
     @Override
     @Transactional
     public WorkVO update(String id, WorkUpdateDTO workUpdateDTO) {
-        if (workUpdateDTO == null) {
-            throw new BusinessException("请求体不能为空");
-        }
 
         String userId = UserContext.getCurrentId();
-        if (userId == null) {
-            throw new BusinessException(401, "未登录或登录已过期");
-        }
 
         Work existing = workMapper.selectById(id);
-        if (existing == null) {
-            throw new BusinessException(404, "作品不存在或已删除");
-        }
-        if (!userId.equals(existing.getAuthorId())) {
-            throw new BusinessException(403, "无权修改该作品");
-        }
 
         // 最终状态：请求未指定时沿用当前状态
         String status = workUpdateDTO.getStatus();
         if (status == null || status.isBlank()) {
             status = existing.getStatus();
         }
-        if (!WORK_STATUSES.contains(status)) {
-            throw new BusinessException("不支持的作品状态: " + status);
-        }
+
         boolean publishing = STATUS_PUBLISHED.equals(status);
 
         // 标题：未指定时沿用原标题；发布时必须非空
         String title = workUpdateDTO.getTitle() == null
                 ? existing.getTitle()
                 : workUpdateDTO.getTitle().trim();
-        if (publishing && (title == null || title.isBlank())) {
-            throw new BusinessException("发布作品时标题不能为空");
-        }
 
         // 分类：列表字段 null=沿用已有启用分类，[]=清空；发布时必须至少一个
         List<Long> categoryIds;
@@ -281,9 +254,6 @@ public class WorkServiceImpl implements WorkService {
                 validateCategories(categoryIds);
             }
         }
-        if (publishing && categoryIds.isEmpty()) {
-            throw new BusinessException("发布作品时至少选择一个分类");
-        }
 
         // 标签：列表字段 null=沿用已有标签，[]=清空；所有标签经规范化校验
         List<String> tags;
@@ -294,10 +264,16 @@ public class WorkServiceImpl implements WorkService {
             tags = normalizeTags(workUpdateDTO.getTags());
         }
 
-        // publishedAt：按最终状态重算——published 且原本未置位则置 now，draft 则清空
-        LocalDateTime publishedAt = publishing
-                ? (existing.getPublishedAt() != null ? existing.getPublishedAt() : LocalDateTime.now())
-                : null;
+        // publishedAt：按最终状态重算——published 且原本未置位则置 now；
+        // offline（下架）保留原发布时间，便于后续重新发布；draft 则清空。
+        LocalDateTime publishedAt;
+        if (publishing) {
+            publishedAt = existing.getPublishedAt() != null ? existing.getPublishedAt() : LocalDateTime.now();
+        } else if (STATUS_OFFLINE.equals(status)) {
+            publishedAt = existing.getPublishedAt();
+        } else {
+            publishedAt = null;
+        }
 
         LocalDateTime now = LocalDateTime.now();
         Work work = new Work();
@@ -380,8 +356,11 @@ public class WorkServiceImpl implements WorkService {
         String userId = UserContext.getCurrentId();
         // 唯一键 (user_id, work_id) 保证同一用户只有一行；
         // 已经点过赞时 INSERT IGNORE 影响 0 行，接口仍幂等成功，不会重复计数
-        workMapper.insertLike(userId, workId, LocalDateTime.now());
+        int inserted = workMapper.insertLike(userId, workId, LocalDateTime.now());
         long likeCount = workMapper.countLikes(workId);
+        if (inserted == 1) {
+            notifyInteraction(userId, workId, "like");
+        }
         return WorkLikeResultVO.builder().liked(true).likeCount(likeCount).build();
     }
 
@@ -398,9 +377,33 @@ public class WorkServiceImpl implements WorkService {
         String userId = UserContext.getCurrentId();
         // 唯一键 (user_id, work_id) 保证同一用户只有一行；
         // 已收藏时 INSERT IGNORE 影响 0 行，接口仍幂等成功，不会重复计数
-        workMapper.insertFavorite(userId, workId, LocalDateTime.now());
+        int inserted = workMapper.insertFavorite(userId, workId, LocalDateTime.now());
         long favoriteCount = workMapper.countFavorites(workId);
+        if (inserted == 1) {
+            notifyInteraction(userId, workId, "favorite");
+        }
         return FavoriteResultVO.builder().favorited(true).favoriteCount(favoriteCount).build();
+    }
+
+    /**
+     * 点赞/收藏确为新增时写入站内通知并触发系统推送。
+     *
+     * <p>仅对“已发布”作品且触发者非作者本人时生成通知，避免草稿/下架/删除产生噪音，
+     * 也避免作者对自己作品的互动自通知。取消点赞/收藏不会删除历史通知。</p>
+     */
+    private void notifyInteraction(String actorId, String workId, String type) {
+        Work work = workMapper.selectById(workId);
+        if (work == null || !STATUS_PUBLISHED.equals(work.getStatus())) {
+            return;
+        }
+        if (actorId.equals(work.getAuthorId())) {
+            return;
+        }
+        long notificationId = notificationService.create(work.getAuthorId(), actorId, workId, type);
+        pushService.onInteraction(work.getAuthorId(), actorId, workId, work.getTitle(), notificationId, type);
+        // 站内实时通知：通过 WebSocket 推给作者当前所有连接，客户端据此刷新未读角标与列表。
+        // 与 JPush 系统推送并存；作者无在线连接时不发送，不影响业务。
+        realtimePushService.push(work.getAuthorId(), actorId, workId, work.getTitle(), notificationId, type);
     }
 
     @Override
@@ -415,6 +418,40 @@ public class WorkServiceImpl implements WorkService {
     public PageResult<WorkVO> pageMyWorks(ProfilePageQueryDTO profilePageQueryDTO) {
         PageHelper.startPage(profilePageQueryDTO.getCurrent(), profilePageQueryDTO.getPageSize());
         Page<WorkVO> page = workMapper.pageMyWorks(UserContext.getCurrentId());
+        long total = page.getTotal();
+        List<WorkVO> result = page.getResult();
+        fillCategories(result);
+        fillTags(result);
+        return new PageResult<>(total, result);
+    }
+
+    /**
+     * 我的作品管理分页。
+     *
+     * 与 {@link #pageMyWorks} 不同：管理页需要展示“已发布 + 已下架”的作品，
+     * 让作者能看到被隐藏的内容并重新发布，因此走独立的 pageMyManageWorks 查询。
+     */
+    @Override
+    public PageResult<WorkVO> pageMyManageWorks(ProfilePageQueryDTO profilePageQueryDTO) {
+        PageHelper.startPage(profilePageQueryDTO.getCurrent(), profilePageQueryDTO.getPageSize());
+        Page<WorkVO> page = workMapper.pageMyManageWorks(UserContext.getCurrentId());
+        long total = page.getTotal();
+        List<WorkVO> result = page.getResult();
+        fillCategories(result);
+        fillTags(result);
+        return new PageResult<>(total, result);
+    }
+
+    /**
+     * 我的草稿分页。
+     *
+     * 与 {@link #pageMyWorks} 对称：草稿属于作者私密内容，仅当前登录用户可见，
+     * 由 {@link UserContext#getCurrentId()} 限定作者，SQL 按 status='draft' 过滤。
+     */
+    @Override
+    public PageResult<WorkVO> pageMyDrafts(ProfilePageQueryDTO profilePageQueryDTO) {
+        PageHelper.startPage(profilePageQueryDTO.getCurrent(), profilePageQueryDTO.getPageSize());
+        Page<WorkVO> page = workMapper.pageMyDrafts(UserContext.getCurrentId());
         long total = page.getTotal();
         List<WorkVO> result = page.getResult();
         fillCategories(result);
@@ -444,6 +481,93 @@ public class WorkServiceImpl implements WorkService {
         return new PageResult<>(total, result);
     }
 
+    @Override
+    public Integer total() {
+        String userId = UserContext.getCurrentId();
+        Integer total = workMapper.total(userId);
+        return total;
+    }
+
+    /**
+     * 删除作品
+     * @param id
+     */
+    @Override
+    public void delete(String id) {
+        workMapper.delete(id);
+    }
+
+    /**
+     * 下架作品。
+     *
+     * 仅作者可操作，且作品当前必须为已发布。下架后公开列表不再展示该作品，
+     * 保留原发布时间与点赞/收藏数据；后续可通过 {@link #republish} 恢复。
+     */
+    @Override
+    @Transactional
+    public WorkVO offline(String id) {
+        String userId = requireLogin();
+        Work existing = requireVisibleOwnedWork(id, userId);
+        if (!STATUS_PUBLISHED.equals(existing.getStatus())) {
+            throw new BusinessException("只有已发布的作品才能下架");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        Work work = new Work();
+        work.setId(id);
+        work.setStatus(STATUS_OFFLINE);
+        // 保留原发布时间，重新发布时不丢失原时间线
+        work.setPublishedAt(existing.getPublishedAt());
+        work.setUpdatedAt(now);
+        workMapper.update(work);
+
+        WorkVO workVO = workMapper.getById(id, userId);
+        fillCategories(Collections.singletonList(workVO));
+        fillTags(Collections.singletonList(workVO));
+        log.info("下架作品成功 id={}", id);
+        return workVO;
+    }
+
+    /**
+     * 重新发布已下架作品。
+     *
+     * 仅作者可操作，且作品当前必须为下架状态。重新发布会再次校验标题与分类完整性，
+     * 并把发布时间刷新为现在，使作品重新回到瀑布流顶部。
+     */
+    @Override
+    @Transactional
+    public WorkVO republish(String id) {
+        String userId = requireLogin();
+        Work existing = requireVisibleOwnedWork(id, userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        Work work = new Work();
+        work.setId(id);
+        work.setStatus(STATUS_PUBLISHED);
+        // 刷新发布时间，让重新发布的作品回到瀑布流顶部
+        work.setPublishedAt(now);
+        work.setUpdatedAt(now);
+        workMapper.update(work);
+
+        WorkVO workVO = workMapper.getById(id, userId);
+        fillCategories(Collections.singletonList(workVO));
+        fillTags(Collections.singletonList(workVO));
+        log.info("重新发布作品成功 id={}", id);
+        return workVO;
+    }
+
+    /** 获取当前登录用户 ID，未登录抛 401。 */
+    private String requireLogin() {
+        String userId = UserContext.getCurrentId();
+        return userId;
+    }
+
+    /** 按 ID 读取未删除作品并校验作者身份，返回作品主记录（供下架/重新发布等作者私有操作复用）。 */
+    private Work requireVisibleOwnedWork(String id, String userId) {
+        Work existing = workMapper.selectById(id);
+        return existing;
+    }
+
     /** 校验提交的分类都存在且处于启用状态，避免关联表中写入悬空分类。 */
     private void validateCategories(List<Long> categoryIds) {
         List<Long> enabledIds = categoryMapper.selectEnabledIds(categoryIds);
@@ -453,9 +577,6 @@ public class WorkServiceImpl implements WorkService {
             if (!enabled.contains(categoryId)) {
                 missing.add(categoryId);
             }
-        }
-        if (!missing.isEmpty()) {
-            throw new BusinessException("所选分类不存在或已停用: " + missing);
         }
     }
 

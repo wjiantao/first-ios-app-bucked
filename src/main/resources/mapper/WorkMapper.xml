@@ -48,7 +48,7 @@
     </select>
 
     <!-- 分页查询作品列表（配套 PageHelper.startPage 使用）。
-         默认不返回已软删除(status='deleted')的作品；
+         默认不返回已软删除(status='deleted')、也未指定状态时不返回已下架(status='offline')的作品；
          categoryId / status / keyword 为可选筛选：keyword 按标题模糊匹配，
          categoryId 通过 work_categories 关联过滤。
          排序：已发布按 published_at 倒序，未发布(草稿)退化为 created_at，保证 feed 稳定。 -->
@@ -72,6 +72,9 @@
             FROM works
         <where>
             status != 'deleted'
+            <if test="status == null or status == ''">
+                AND status != 'offline'
+            </if>
             <if test="categoryId != null">
                 AND EXISTS (
                     SELECT 1 FROM work_categories wc
@@ -222,6 +225,12 @@
         VALUES (#{userId}, #{workId}, #{createdAt})
     </insert>
 
+    <!-- 记录一次作品浏览：创作中心统计使用；无需去重，重复浏览会累计 -->
+    <insert id="insertView">
+        INSERT INTO work_views (work_id, viewer_id, created_at)
+        VALUES (#{workId}, #{viewerId}, #{createdAt})
+    </insert>
+
     <delete id="deleteLike">
         DELETE FROM work_likes
         WHERE user_id = #{userId} AND work_id = #{workId}
@@ -250,8 +259,9 @@
         WHERE work_id = #{workId}
     </select>
 
-    <!-- “我的作品”分页：只返回当前用户已发布的作品，
-         供个人主页“作品”Tab 使用，按发布时间倒序。 -->
+    <!-- “我的作品”分页：返回当前用户已发布的作品，
+         供个人主页“作品”Tab 使用，按发布时间倒序。
+         已下架（offline）作品不在此返回，由管理页专用接口展示。 -->
     <select id="pageMyWorks" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
                title,
@@ -282,6 +292,77 @@
         FROM works
         WHERE author_id = #{userId}
           AND status = 'published'
+        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+    </select>
+
+    <!-- 作品管理页“我的作品”分页：返回当前用户已发布或已下架的作品，
+         按发布时间倒序。已下架作品保留在列表中，便于作者识别并重新发布；
+         草稿不在管理页展示（由草稿箱单独处理）。 -->
+    <select id="pageMyManageWorks" resultType="com.shiguang.vo.WorkVO">
+        SELECT id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = works.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = works.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = works.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = works.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited
+        FROM works
+        WHERE author_id = #{userId}
+          AND status IN ('published', 'offline')
+        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+    </select>
+
+    <!-- “我的草稿”分页：只返回当前用户状态为草稿的作品，
+         供个人主页“草稿”Tab 使用，按创建时间倒序。草稿属于私密内容，此处按作者隔离。 -->
+    <select id="pageMyDrafts" resultType="com.shiguang.vo.WorkVO">
+        SELECT id,
+               title,
+               cover_url,
+               video_url,
+               latitude,
+               longitude,
+               location_name,
+               content_md,
+               status,
+               published_at,
+               created_at,
+               updated_at,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = works.id) AS like_count,
+               EXISTS (
+                   SELECT 1 FROM work_likes wl
+                   WHERE wl.work_id = works.id
+                     AND wl.user_id = #{userId}
+               ) AS liked,
+               (SELECT COUNT(*) FROM work_favorites wf
+                WHERE wf.work_id = works.id) AS favorite_count,
+               EXISTS (
+                   SELECT 1 FROM work_favorites wf
+                   WHERE wf.work_id = works.id
+                     AND wf.user_id = #{userId}
+               ) AS favorited
+        FROM works
+        WHERE author_id = #{userId}
+          AND status = 'draft'
         ORDER BY COALESCE(published_at, created_at) DESC, id DESC
     </select>
 

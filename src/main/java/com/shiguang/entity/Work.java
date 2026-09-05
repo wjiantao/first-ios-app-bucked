@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
  *
  * 作品与分类为多对多：分类不冗余在 works 中，而是通过
  * work_categories 关联表（WorkMapper.insertWorkCategories）维护。
- * status 取值 draft=草稿 / published=已发布 / deleted=软删除。
+ * status 取值 draft=草稿 / published=已发布 / offline=下架（原已发布作品被作者隐藏）/
+ * deleted=软删除。
  */
 @Data
 public class Work {

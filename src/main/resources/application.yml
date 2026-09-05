@@ -1,5 +1,6 @@
 server:
-  port: 8080
+  # Render 会注入 PORT 环境变量；本地未设置时仍使用 8080
+  port: ${PORT:8080}
 
 spring:
   datasource:
@@ -7,7 +8,8 @@ spring:
     # 密码允许通过环境变量覆盖；默认与 sky-take-out 本地环境保持一致
     url: jdbc:mysql://${SHIGUANG_DB_HOST:localhost}:${SHIGUANG_DB_PORT:3306}/shiguang?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
     username: ${SHIGUANG_DB_USERNAME:root}
-    password: ${SHIGUANG_DB_PASSWORD:123456}
+    # 部署在 Render 时可直接复用 MySQL 容器的 MYSQL_PASSWORD 环境变量
+    password: ${SHIGUANG_DB_PASSWORD:${MYSQL_PASSWORD:123456}}
   redis:
     host: ${SHIGUANG_REDIS_HOST:localhost}
     port: ${SHIGUANG_REDIS_PORT:6379}
@@ -61,6 +63,12 @@ shiguang:
   mail:
     # 发件人地址；留空时使用 spring.mail.username。部分服务商（QQ/163）要求发件人 == 登录账号
     from: ${SHIGUANG_MAIL_FROM:}
+  push:
+    jpush:
+      # 极光 JPush 配置（环境变量注入）；未配置时发送仅记日志、不实际发送
+      app-key: ${SHIGUANG_JPUSH_APP_KEY:}
+      master-secret: ${SHIGUANG_JPUSH_MASTER_SECRET:}
+      apns-production: ${SHIGUANG_JPUSH_APNS_PRODUCTION:false}
 
 logging:
   level:

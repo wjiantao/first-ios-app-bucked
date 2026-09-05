@@ -159,4 +159,57 @@ public class WorkController {
         log.info("取消收藏：{}", id);
         return Result.success(workService.unfavorite(id));
     }
+
+    @Operation(summary = "获取作品数量")
+    @SecurityRequirement(name = OpenApiConfiguration.BEARER_AUTH)
+    @DeleteMapping("/favorite/total")
+    public Result<Integer> total() {
+        log.info("获取作品数量：{}");
+        return Result.success(workService.total());
+    }
+
+    @Operation(summary = "删除作品")
+    @SecurityRequirement(name = OpenApiConfiguration.BEARER_AUTH)
+    @DeleteMapping("/{id}")
+    public Result<Integer> delete(@PathVariable String id) {
+        log.info("删除作品：{}");
+        workService.delete(id);
+        return Result.success();
+    }
+
+    /**
+     * 下架作品（需登录，仅作者可操作）。
+     *
+     * 把 status=published 的作品置为 offline，下架后公开列表不再展示。
+     *
+     * @param id 作品 ID
+     * @return 下架后的作品（含所属分类与标签）
+     */
+    @Operation(summary = "下架作品",
+            description = "仅作者可操作，且作品当前必须为已发布；下架后公开列表不再展示，"
+                    + "保留原发布时间与点赞/收藏数据，便于后续重新发布。")
+    @SecurityRequirement(name = OpenApiConfiguration.BEARER_AUTH)
+    @PostMapping("/{id}/offline")
+    public Result<WorkVO> offline(@PathVariable String id) {
+        log.info("下架作品：{}", id);
+        return Result.success(workService.offline(id));
+    }
+
+    /**
+     * 重新发布已下架作品（需登录，仅作者可操作）。
+     *
+     * 把 status=offline 的作品置为 published，并刷新发布时间回到瀑布流顶部。
+     *
+     * @param id 作品 ID
+     * @return 重新发布后的作品（含所属分类与标签）
+     */
+    @Operation(summary = "重新发布作品",
+            description = "仅作者可操作，且作品当前必须为下架状态；重新发布时校验标题与分类完整性，"
+                    + "并刷新发布时间使其回到瀑布流顶部。")
+    @SecurityRequirement(name = OpenApiConfiguration.BEARER_AUTH)
+    @PostMapping("/{id}/republish")
+    public Result<WorkVO> republish(@PathVariable String id) {
+        log.info("重新发布作品：{}", id);
+        return Result.success(workService.republish(id));
+    }
 }

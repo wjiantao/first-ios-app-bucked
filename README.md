@@ -129,3 +129,41 @@ src/main/java/com/shiguang/
 ├── handler/         全局异常处理
 └── utils/           JWT、密码摘要工具
 ```
+
+## 部署到 Render
+
+仓库已内置 Render Blueprint，可在 Render 上一次性创建后端所需的全部资源：
+
+```text
+render.yaml             Blueprint 配置（Web 服务 + MySQL + Redis）
+Dockerfile              Spring Boot 应用镜像（Maven 构建 + JRE 17 运行）
+docker/mysql/Dockerfile MySQL 8 镜像，首次启动自动执行 sql/init.sql
+sql/init.sql            完整可重复执行的建库建表 + 种子数据脚本
+```
+
+### 一键部署步骤
+
+1. 把本仓库推送到 GitHub。
+2. 打开 Render，点击 **New -> Blueprint**，选择本仓库。
+3. 按页面提示填写敏感信息：
+   - `MYSQL_PASSWORD`（业务库密码，与后端共用）
+   - `MYSQL_ROOT_PASSWORD`（MySQL root 密码）
+   - `SHIGUANG_MAIL_*`（SMTP，可选；不填则生产模式下发验证码会报错）
+   - `SHIGUANG_JPUSH_*`（极光推送，可选）
+4. Render 会自动创建并部署三个资源：
+   - `shiguang-server`：Spring Boot 后端（免费 Web 服务）
+   - `shiguang-mysql`：MySQL 8（私有服务，含 10 GB 持久盘）
+   - `shiguang-redis`：Redis / Key Value（免费档）
+
+部署完成后，后端地址形如 `https://shiguang-server.onrender.com`，Swagger 文档在
+`https://shiguang-server.onrender.com/swagger-ui/index.html`，健康检查为
+`https://shiguang-server.onrender.com/health`。
+
+### 费用与免费档限制
+
+- Web 服务与 Redis 使用免费档，MySQL 私有服务无免费档，需要付费（约 $7/月
+  计算实例 + $0.25/GB/月的持久盘，10 GB 约 $2.5/月）。
+- 免费 Web 服务空闲 15 分钟会休眠，且**不能**对外发送 465/587 端口的 SMTP 邮件；
+  如需真实发送邮箱验证码，请把 `shiguang-server` 升级为付费档，或改用 HTTP 邮件服务。
+- 免费 Web 服务文件系统是临时的，`/app/uploads` 里的上传图片在重启/重新部署后会丢失；
+  生产环境应改为对象存储或挂载持久盘。

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.PushDeviceMapper">
+
+    <!-- (user_id, platform, vendor) 唯一键：命中则覆盖 token 并刷新 updated_at，未命中则新插入 -->
+    <insert id="upsert">
+        INSERT INTO push_devices (user_id, platform, vendor, token, created_at, updated_at)
+        VALUES (#{userId}, #{platform}, #{vendor}, #{token}, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE token = #{token}, updated_at = #{now}
+    </insert>
+
+    <delete id="deleteByUserAndPlatform">
+        DELETE FROM push_devices
+        WHERE user_id = #{userId}
+          AND platform = #{platform}
+          AND vendor = #{vendor}
+    </delete>
+
+    <select id="selectByUserId" resultType="com.shiguang.entity.PushDevice">
+        SELECT id,
+               user_id,
+               platform,
+               vendor,
+               token,
+               created_at,
+               updated_at
+        FROM push_devices
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>

@@ -33,7 +33,8 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtTokenUserInterceptor)
-                .addPathPatterns("/api/users/**", "/api/categories/**", "/api/works/**")
+                .addPathPatterns("/api/users/**", "/api/categories/**", "/api/works/**", "/api/creator/**",
+                        "/api/notifications/**", "/api/push/**")
                 .excludePathPatterns(
                         // 首页游客可读接口：放行后未登录即可浏览首页，
                         // 登录校验只保留给需要用户身份的能力（发布/详情/个人资料等）。

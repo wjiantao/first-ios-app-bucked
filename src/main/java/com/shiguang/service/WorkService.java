@@ -97,9 +97,25 @@ public interface WorkService {
      * 我的作品分页（GET /api/users/me/works）。
      *
      * @param profilePageQueryDTO current/pageSize 分页参数
-     * @return 当前用户已发布作品分页结果
+     * @return 当前用户已发布作品分页结果（供个人主页“作品”Tab 展示）
      */
     PageResult<WorkVO> pageMyWorks(ProfilePageQueryDTO profilePageQueryDTO);
+
+    /**
+     * 我的作品管理分页（GET /api/users/me/manage-works）。
+     *
+     * @param profilePageQueryDTO current/pageSize 分页参数
+     * @return 当前用户已发布及已下架作品分页结果（供“作品管理”页展示）
+     */
+    PageResult<WorkVO> pageMyManageWorks(ProfilePageQueryDTO profilePageQueryDTO);
+
+    /**
+     * 我的草稿分页（GET /api/users/me/drafts）。
+     *
+     * @param profilePageQueryDTO current/pageSize 分页参数
+     * @return 当前用户草稿作品分页结果
+     */
+    PageResult<WorkVO> pageMyDrafts(ProfilePageQueryDTO profilePageQueryDTO);
 
     /**
      * 我的收藏分页（GET /api/users/me/favorites）。
@@ -116,4 +132,33 @@ public interface WorkService {
      * @return 当前用户点赞过的已发布作品分页结果
      */
     PageResult<WorkVO> pageMyLikes(ProfilePageQueryDTO profilePageQueryDTO);
+
+    Integer total();
+
+    /**
+     * 删除作品
+     */
+    void delete(String id);
+
+    /**
+     * 下架作品（POST /api/works/{id}/offline）。
+     *
+     * 仅作者可操作，且作品当前必须为已发布。下架后公开列表不再展示，
+     * 保留原发布时间与点赞/收藏数据，便于后续重新发布。
+     *
+     * @param id 作品 ID
+     * @return 下架后的作品（含所属分类与标签）
+     */
+    WorkVO offline(String id);
+
+    /**
+     * 重新发布已下架作品（POST /api/works/{id}/republish）。
+     *
+     * 仅作者可操作，且作品当前必须为下架状态。重新发布时校验标题与分类完整性，
+     * 并刷新发布时间使其回到瀑布流顶部。
+     *
+     * @param id 作品 ID
+     * @return 重新发布后的作品（含所属分类与标签）
+     */
+    WorkVO republish(String id);
 }

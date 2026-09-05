@@ -1,0 +1,15 @@
+.git
+.gitignore
+.idea
+*.iml
+.vscode
+.DS_Store
+
+# 本地构建产物与敏感配置
+target
+uploads
+config/application.yml
+
+# 文档与日志
+docs
+*.log

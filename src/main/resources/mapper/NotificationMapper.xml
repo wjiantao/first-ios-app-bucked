@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.NotificationMapper">
+
+    <!-- 插入通知：is_read 默认 0，无需显式赋值 -->
+    <insert id="insert" parameterType="com.shiguang.entity.Notification"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notifications (recipient_id, actor_id, work_id, type, created_at)
+        VALUES (#{recipientId}, #{actorId}, #{workId}, #{type}, #{createdAt})
+    </insert>
+
+    <!-- 接收者通知分页：LEFT JOIN 补全 actor 昵称/头像与作品标题/封面。
+         作品被硬删后 w.title 为 NULL，用 COALESCE 回退为“作品已删除”，避免前端拿到空标题。 -->
+    <select id="pageByRecipient" resultType="com.shiguang.vo.NotificationVO">
+        SELECT n.id,
+               n.recipient_id,
+               n.actor_id,
+               n.work_id,
+               n.type,
+               n.is_read,
+               n.created_at,
+               u.nickname                    AS actor_nickname,
+               u.avatar_url                  AS actor_avatar_url,
+               COALESCE(w.title, '作品已删除') AS work_title,
+               w.cover_url                   AS work_cover_url
+        FROM notifications n
+                 LEFT JOIN users u ON u.id = n.actor_id
+                 LEFT JOIN works w ON w.id = n.work_id
+        WHERE n.recipient_id = #{recipientId}
+        ORDER BY n.created_at DESC, n.id DESC
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*)
+        FROM notifications
+        WHERE recipient_id = #{recipientId}
+          AND is_read = 0
+    </select>
+
+    <update id="markAllRead">
+        UPDATE notifications
+        SET is_read = 1
+        WHERE recipient_id = #{recipientId}
+          AND is_read = 0
+    </update>
+
+    <update id="markRead">
+        UPDATE notifications
+        SET is_read = 1
+        WHERE id = #{id}
+          AND recipient_id = #{recipientId}
+    </update>
+
+</mapper>

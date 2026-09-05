@@ -32,6 +32,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- WebSocket：点赞/收藏等站内通知实时推送（与 JPush 系统推送并存） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Redis：邮箱验证码等短时效数据存 Redis，并利用 TTL 自动过期 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -98,6 +104,7 @@
             <artifactId>pagehelper-spring-boot-starter</artifactId>
             <version>1.4.7</version>
         </dependency>
+
     </dependencies>
 
     <build>

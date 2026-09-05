@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS works (
     location_name VARCHAR(200)  NULL     COMMENT '位置展示名，如"杭州·西湖"；发布时可选，不带则为 NULL',
     content_md    MEDIUMTEXT    NULL     COMMENT 'Markdown 富文本正文（源格式，唯一内容事实源）',
     content_text  MEDIUMTEXT    NULL     COMMENT 'Markdown 剥离后的纯文本，供列表摘要/未来全文搜索',
-    status        VARCHAR(16)   NOT NULL DEFAULT 'draft' COMMENT 'draft=草稿 / published=已发布 / deleted=软删除',
+    status        VARCHAR(16)   NOT NULL DEFAULT 'draft' COMMENT 'draft=草稿 / published=已发布 / offline=下架 / deleted=软删除',
     published_at  DATETIME      NULL     COMMENT '发布时间，发布后置位，瀑布流按此倒序',
     deleted_at    DATETIME      NULL     COMMENT '软删除时间，置位后列表查询不可见',
     created_at    DATETIME      NOT NULL,
