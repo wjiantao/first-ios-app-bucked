@@ -22,6 +22,9 @@ public class Work {
 
     private String title;
 
+    /** 作品类型：image_text=图文 / article=长文 / video=视频；缺省 article，与 works.type 默认值一致。 */
+    private String type;
+
     private String coverUrl;
 
     private String videoUrl;

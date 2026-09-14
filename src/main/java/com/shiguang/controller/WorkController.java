@@ -36,11 +36,11 @@ public class WorkController {
     private WorkService workService;
 
     /**
-     * 分页查询作品列表（公开接口，无需登录）。
+     * 分页查询作品列表（推荐流公开；关注流需登录）。
      *
-     * 首页瀑布流在未登录状态下也要能正常浏览，
-     * 因此该接口不要求 JWT；published 过滤由客户端查询参数保证，
-     * 服务端同样只返回未删除的作品。
+     * 首页推荐瀑布流在未登录状态下也要能正常浏览，
+     * 因此接口允许没有 JWT 的请求；登录请求仍会由拦截器写入 UserContext，
+     * followingOnly=true 时由 Service 强制校验登录并过滤关注作者。
      *
      * @param workPageQueryDTO
      * @return

@@ -25,6 +25,21 @@ public class WorkVO {
     @Schema(description = "作品 ID", example = "w-1a2b3c4d5e6f")
     private String id;
 
+    @Schema(description = "作者用户 ID", example = "u-1a2b3c4d5e6f", nullable = true)
+    private String authorId;
+
+    @Schema(description = "作者昵称", example = "拾光", nullable = true)
+    private String authorNickname;
+
+    @Schema(description = "作者头像 URL", example = "/uploads/avatar.jpg", nullable = true)
+    private String authorAvatarUrl;
+
+    @Schema(description = "当前用户是否关注作者", example = "false")
+    private boolean following;
+
+    @Schema(description = "作者粉丝数", example = "12")
+    private long followerCount;
+
     @Schema(description = "作品所属分类（启用中的分类，按 sortOrder 升序）")
     private List<CategoryVO> categories;
 
@@ -45,6 +60,9 @@ public class WorkVO {
 
     @Schema(description = "标题", example = "周末的湖边日落")
     private String title;
+
+    @Schema(description = "作品类型：image_text=图文 / article=长文 / video=视频", example = "article")
+    private String type;
 
     @Schema(description = "封面图 URL（/uploads/... 路径）", example = "/uploads/3f9c2a1b4d5e6f7a8b9c0d1e2f3a4b5c.jpg", nullable = true)
     private String coverUrl;

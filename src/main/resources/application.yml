@@ -19,9 +19,10 @@ spring:
     timeout: 2000ms
   servlet:
     multipart:
-      # 上传单文件 5MB 上限，与 CommonController 中的校验保持一致
-      max-file-size: 5MB
-      max-request-size: 6MB
+      # 全局上限需覆盖视频上传（CommonController 的 uploadVideo 单文件上限 200MB）。
+      # 具体类型的文件大小仍由 CommonController 内部分别校验：图片限 5MB、视频限 200MB。
+      max-file-size: 200MB
+      max-request-size: 220MB
   # SMTP 配置留空时不会真正发信；配置后（如 QQ/163/Gmail）验证码走真实邮件发送
   mail:
     host: ${SHIGUANG_MAIL_HOST:}
@@ -59,9 +60,10 @@ shiguang:
     dir: ${SHIGUANG_UPLOAD_DIR:./uploads}
   email-code:
     ttl: 300000
-  # 开发模式：邮箱验证码固定 123456 也可通过，并在发送接口中回显 devCode；
-  # 生产环境必须关闭（SHIGUANG_DEV_MODE=false）
-  dev-mode: ${SHIGUANG_DEV_MODE:true}
+  # 生产环境默认关闭开发模式：打包后不传 SHIGUANG_DEV_MODE 也不会回显验证码或放行 123456。
+  # 本地通过 mvn spring-boot:run 启动时会激活 dev profile，自动开启开发模式；
+  # 如需强制开启/关闭，仍可用 SHIGUANG_DEV_MODE=true/false 覆盖。
+  dev-mode: ${SHIGUANG_DEV_MODE:false}
   mail:
     # 发件人地址；留空时使用 spring.mail.username。部分服务商（QQ/163）要求发件人 == 登录账号
     from: ${SHIGUANG_MAIL_FROM:}
@@ -71,6 +73,13 @@ shiguang:
       app-key: ${SHIGUANG_JPUSH_APP_KEY:}
       master-secret: ${SHIGUANG_JPUSH_MASTER_SECRET:}
       apns-production: ${SHIGUANG_JPUSH_APNS_PRODUCTION:false}
+  map:
+    # 高程服务地址；为空时地形信息接口返回明确的未配置错误。
+    elevation-url: ${SHIGUANG_MAP_ELEVATION_URL:}
+    location-search-url: ${SHIGUANG_MAP_LOCATION_SEARCH_URL:}
+    labels-url: ${SHIGUANG_MAP_LABELS_URL:}
+    user-agent: ${SHIGUANG_MAP_USER_AGENT:ShiguangMap/1.0}
+    provider-timeout-ms: ${SHIGUANG_MAP_PROVIDER_TIMEOUT_MS:8000}
 
 logging:
   level:

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.MapWorkMapper">
+
+    <!-- Cesium 地图可视范围查询：只返回已发布且带 WGS84 坐标的作品。
+         这里不查正文/分类/标签，减少地图频繁移动时产生的网络流量；
+         like_count 用子查询聚合，避免多表 JOIN 放大行数。
+         sort_time 仅用于服务端跨 180° 经线合并排序，前端由 @JsonIgnore 隐藏。 -->
+    <select id="selectVisible" resultType="com.shiguang.vo.MapWorkVO">
+        SELECT w.id,
+               w.title,
+               u.nickname AS author_name,
+               w.type,
+               w.cover_url,
+               w.latitude,
+               w.longitude,
+               w.location_name,
+               (SELECT COUNT(*) FROM work_likes wl
+                WHERE wl.work_id = w.id) AS like_count,
+               COALESCE(w.published_at, w.created_at) AS sort_time
+        FROM works w
+        LEFT JOIN users u ON u.id = w.author_id
+        WHERE w.status = 'published'
+          AND w.latitude IS NOT NULL
+          AND w.longitude IS NOT NULL
+          AND w.latitude BETWEEN #{south} AND #{north}
+          AND w.longitude BETWEEN #{west} AND #{east}
+        ORDER BY COALESCE(w.published_at, w.created_at) DESC, w.id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

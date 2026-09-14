@@ -23,10 +23,13 @@
 # 1. 建库建表（可重复执行）
 mysql -uroot -p123456 < sql/schema.sql
 
-# 2. 写入种子数据（可重复执行）
+# 2. 升级已有数据库，创建关注关系并放宽关注通知的作品字段（可重复执行）
+mysql -uroot -p123456 < sql/migrations/20260914_add_user_follows.sql
+
+# 3. 写入种子数据（可重复执行）
 mysql -uroot -p123456 shiguang < sql/seed.sql
 
-# 3. 启动
+# 4. 启动
 mvn spring-boot:run
 ```
 
@@ -47,8 +50,10 @@ Redis 连接默认 `localhost:6379`（无密码），可用 `SHIGUANG_REDIS_HOST
 
 ### 发送邮件（验证码）
 
-配置 SMTP 后验证码才会真实发送到邮箱；未配置时仅开发模式（默认开启）会在
-日志与响应 `devCode` 中回显，生产模式（`SHIGUANG_DEV_MODE=false`）会直接报错。
+配置 SMTP 后验证码才会真实发送到邮箱；未配置时仅开发模式会在日志与响应
+`devCode` 中回显，生产模式会直接报错。本地通过 `mvn spring-boot:run` 启动时会
+自动激活 `dev` profile，因此默认开启开发模式；打包后的生产 jar 默认关闭开发模式，
+可通过 `SHIGUANG_DEV_MODE=true` 显式开启、`SHIGUANG_DEV_MODE=false` 显式关闭。
 
 QQ 邮箱示例（需要先在 QQ 邮箱开启 SMTP 并获取授权码）：
 
@@ -70,6 +75,25 @@ mvn spring-boot:run
 
 ## 认证接口
 
+## 地图工具接口
+
+地图工具统一挂载在 `/api/map`，返回格式仍为 `{code, msg, data}`：
+
+- `POST /api/map/elevation`：批量高程，兼容 OpenTopoData 风格 provider。
+- `POST /api/map/works`：按 Cesium 可视范围查询作品点位。
+
+provider 地址通过环境变量配置，不把第三方密钥写入客户端：
+
+```bash
+SHIGUANG_MAP_ELEVATION_URL=https://elevation.example/v1 \
+SHIGUANG_MAP_LOCATION_SEARCH_URL=https://geocoder.example/search \
+SHIGUANG_MAP_USER_AGENT='ShiguangMap/1.0 (+https://example.com)' \
+SHIGUANG_MAP_PROVIDER_TIMEOUT_MS=8000 \
+mvn spring-boot:run
+```
+
+高程 provider 通过环境变量配置，未配置时地图仍可浏览，但地形信息会提示服务不可用。
+
 ### 邮箱注册（两步）
 
 1. 发送验证码：`POST /api/auth/email-code`，body：`{"email":"demo@shiguang.app"}`
@@ -84,7 +108,8 @@ mvn spring-boot:run
 | POST | `/api/auth/login/{channel}` | 第三方登录，channel=wechat/douyin/apple（开发模式 mock） |
 | GET | `/api/users/me` | 当前用户信息（需 `Authorization: Bearer <token>`） |
 
-开发模式（默认开启，`SHIGUANG_DEV_MODE=false` 关闭）说明：
+开发模式（本地 `mvn spring-boot:run` 默认开启；生产 jar 默认关闭，可用
+`SHIGUANG_DEV_MODE` 覆盖）说明：
 
 - 发送验证码响应带 `devCode`，日志同时打印验证码；
 - 固定验证码 `123456` 可直接通过邮箱验证；

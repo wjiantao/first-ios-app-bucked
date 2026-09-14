@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.MapFeatureMapper">
+    <select id="selectCheckin" resultType="com.shiguang.vo.MapCheckinVO">
+        SELECT c.work_id,
+               w.title,
+               c.location_name,
+               c.created_at AS checked_in_at
+        FROM map_checkins c
+        JOIN works w ON w.id = c.work_id
+        WHERE c.user_id = #{userId}
+          AND c.work_id = #{workId}
+          AND w.status = 'published'
+        LIMIT 1
+    </select>
+
+    <insert id="insertCheckin" parameterType="com.shiguang.entity.MapCheckin"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO map_checkins (user_id, work_id, latitude, longitude, location_name, created_at)
+        VALUES (#{userId}, #{workId}, #{latitude}, #{longitude}, #{locationName}, #{createdAt})
+    </insert>
+
+    <select id="selectCheckins" resultType="com.shiguang.vo.MapCheckinVO">
+        SELECT c.work_id,
+               w.title,
+               c.location_name,
+               c.created_at AS checked_in_at
+        FROM map_checkins c
+        JOIN works w ON w.id = c.work_id
+        WHERE c.user_id = #{userId}
+          AND w.status = 'published'
+        ORDER BY c.created_at DESC, c.id DESC
+    </select>
+</mapper>

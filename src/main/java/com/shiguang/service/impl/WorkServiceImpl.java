@@ -49,6 +49,9 @@ public class WorkServiceImpl implements WorkService {
     private static final String STATUS_PUBLISHED = "published";
     private static final String STATUS_OFFLINE = "offline";
     private static final String STATUS_DELETED = "deleted";
+    /** 作品类型白名单：image_text=图文 / article=长文 / video=视频，与 works.type 注释口径一致。 */
+    private static final Set<String> WORK_TYPES = Set.of("image_text", "article", "video");
+    private static final String DEFAULT_WORK_TYPE = "article";
     private static final int MAX_TAG_LENGTH = 30;
     private static final int MAX_TAG_COUNT = 10;
 
@@ -77,6 +80,14 @@ public class WorkServiceImpl implements WorkService {
      */
     @Override
     public PageResult<WorkVO> pageQuery(WorkPageQueryDTO workPageQueryDTO) {
+        String viewerId = UserContext.getCurrentId();
+        // 关注状态和关注流都只能使用 JWT 对应的用户身份，不能信任请求体里的 viewerId。
+        workPageQueryDTO.setViewerId(viewerId);
+        if (Boolean.TRUE.equals(workPageQueryDTO.getFollowingOnly())) {
+            if (viewerId == null || viewerId.isBlank()) {
+                throw new BusinessException(401, "请先登录");
+            }
+        }
         PageHelper.startPage(workPageQueryDTO.getCurrent(), workPageQueryDTO.getPageSize());
         Page<WorkVO> page = workMapper.pageQuery(workPageQueryDTO);
         long total = page.getTotal();
@@ -160,6 +171,7 @@ public class WorkServiceImpl implements WorkService {
         work.setId("w-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         work.setAuthorId(authorId);
         work.setTitle(workPublishDTO.getTitle() == null ? "" : workPublishDTO.getTitle().trim());
+        work.setType(normalizeType(workPublishDTO.getType()));
         work.setCoverUrl(workPublishDTO.getCoverUrl());
         work.setVideoUrl(workPublishDTO.getVideoUrl());
         // 地理位置：可选。坐标成对出现且做范围校验，位置名 trim 后空串归为 null。
@@ -198,23 +210,37 @@ public class WorkServiceImpl implements WorkService {
     @Override
     public WorkVO getById(String id) {
         String userId = UserContext.getCurrentId();
-        // 先按主记录读取作者与状态，用于“草稿/下架作品仅作者可见”的访问控制，
-        // 避免未发布或已下架的内容被其他用户通过 ID 遍历到。
+
+        // 先查询作品主记录
         Work work = workMapper.selectById(id);
-        // 详情接口要求登录：传入当前用户 ID，让返回的 liked 表示
-        // “这个用户是否点过赞”，客户端可直接渲染爱心选中态。
+
+        if (work == null) {
+            throw new BusinessException("作品不存在");
+        }
+
+        // 查询详情
         WorkVO workVO = workMapper.getById(id, userId);
+
+        if (workVO == null) {
+            throw new BusinessException("作品不存在或无权查看");
+        }
+
         fillCategories(Collections.singletonList(workVO));
         fillTags(Collections.singletonList(workVO));
-        // 统计“浏览量”：成功打开已发布作品即落一条记录（含作者本人，单作者 App 阶段
-        // 作者即主要浏览者）；草稿/下架不产生公开浏览。
+
+        // 只有已发布作品才记录浏览量
         if (STATUS_PUBLISHED.equals(work.getStatus())) {
-            workMapper.insertView(userId, work.getId(), LocalDateTime.now());
+            workMapper.insertView(
+                    userId,
+                    work.getId(),
+                    LocalDateTime.now()
+            );
         }
+
         log.info("查看作品: {}", workVO);
+
         return workVO;
     }
-
     /**
      * 修改作品。
      *
@@ -279,6 +305,10 @@ public class WorkServiceImpl implements WorkService {
         Work work = new Work();
         work.setId(id);
         work.setTitle(title);
+        // 类型：请求未指定时沿用已有类型；指定时校验合法性，避免外部提交未开放的类型值。
+        work.setType(workUpdateDTO.getType() != null
+                ? normalizeType(workUpdateDTO.getType())
+                : existing.getType());
         work.setCoverUrl(workUpdateDTO.getCoverUrl() != null
                 ? workUpdateDTO.getCoverUrl() : existing.getCoverUrl());
         work.setVideoUrl(workUpdateDTO.getVideoUrl() != null
@@ -340,6 +370,25 @@ public class WorkServiceImpl implements WorkService {
         if (longitude != null && (longitude < -180 || longitude > 180)) {
             throw new BusinessException("经度超出合法范围(-180~180): " + longitude);
         }
+    }
+
+    /**
+     * 规范化作品类型：空值回落为默认 {@link #DEFAULT_WORK_TYPE}（长文），
+     * 非白名单值直接拒绝，避免把脏数据写入 works.type 影响前台展示与筛选。
+     *
+     * @param type 客户端提交的作品类型，可为 null
+     * @return 规范化后的类型；空白值返回默认 article
+     * @throws BusinessException 类型不在白名单内时抛出，提示调用方修正
+     */
+    private String normalizeType(String type) {
+        if (type == null || type.isBlank()) {
+            return DEFAULT_WORK_TYPE;
+        }
+        String normalized = type.trim();
+        if (!WORK_TYPES.contains(normalized)) {
+            throw new BusinessException("不支持的作品类型: " + normalized);
+        }
+        return normalized;
     }
 
     /** 规范化位置展示名：trim 后为空串则返回 null，表示作品不带位置。 */
@@ -670,9 +719,10 @@ public class WorkServiceImpl implements WorkService {
         // 第一步：收集所有作品的 id，作为一次批量查询的入参
         List<String> workIds = new ArrayList<>();
         for (WorkVO record : records) {
-            workIds.add(record.getId());
+            if (record != null && record.getId() != null) {
+                workIds.add(record.getId());
+            }
         }
-
         // 第二步：执行一次批量查询，并按 workId 分组
         // 用 HashMap 记录 workId -> 该作品下的分类列表
         Map<String, List<CategoryVO>> categoriesByWork = new HashMap<>();
@@ -696,8 +746,16 @@ public class WorkServiceImpl implements WorkService {
 
         // 第三步：逐条回填。查不到分类的作品回填空列表，避免调用方出现 NPE
         for (WorkVO record : records) {
+            if (record == null || record.getId() == null) {
+                continue;
+            }
+
             record.setCategories(
-                    categoriesByWork.getOrDefault(record.getId(), Collections.emptyList()));
+                    categoriesByWork.getOrDefault(
+                            record.getId(),
+                            Collections.emptyList()
+                    )
+            );
         }
     }
 
@@ -715,17 +773,36 @@ public class WorkServiceImpl implements WorkService {
         }
 
         List<String> workIds = new ArrayList<>();
+
         for (WorkVO record : records) {
-            workIds.add(record.getId());
+            if (record != null && record.getId() != null) {
+                workIds.add(record.getId());
+            }
+        }
+
+        if (workIds.isEmpty()) {
+            return;
         }
 
         Map<String, List<String>> tagsByWork = new HashMap<>();
+
         for (TagVO row : tagMapper.selectByWorkIds(workIds)) {
-            tagsByWork.computeIfAbsent(row.getWorkId(), k -> new ArrayList<>()).add(row.getName());
+            tagsByWork
+                    .computeIfAbsent(row.getWorkId(), k -> new ArrayList<>())
+                    .add(row.getName());
         }
 
         for (WorkVO record : records) {
-            record.setTags(tagsByWork.getOrDefault(record.getId(), Collections.emptyList()));
+            if (record == null || record.getId() == null) {
+                continue;
+            }
+
+            record.setTags(
+                    tagsByWork.getOrDefault(
+                            record.getId(),
+                            Collections.emptyList()
+                    )
+            );
         }
     }
 }

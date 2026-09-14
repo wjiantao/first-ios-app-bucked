@@ -23,16 +23,19 @@ public class WorkPublishDTO {
 
     private String title;
 
+    /** 作品类型：image_text=图文 / article=长文 / video=视频；缺省 article。 */
+    private String type;
+
     private String coverUrl;
 
     private String contentMd;
 
     private String videoUrl;
 
-    /** 纬度（WGS84），可选。给定时应与 longitude 成对出现。 */
+    /** 纬度（GCJ-02，高德坐标），可选。给定时应与 longitude 成对出现。 */
     private Double latitude;
 
-    /** 经度（WGS84），可选。给定时应与 latitude 成对出现。 */
+    /** 经度（GCJ-02，高德坐标），可选。给定时应与 latitude 成对出现。 */
     private Double longitude;
 
     /** 位置展示名，如"杭州·西湖"；可选，空/缺省表示不带位置。 */

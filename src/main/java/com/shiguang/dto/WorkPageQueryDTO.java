@@ -37,4 +37,12 @@ public class WorkPageQueryDTO {
     /** 标签筛选：标签名精确匹配，为空表示全部分类。 */
     @Schema(description = "标签筛选：标签名精确匹配，为空表示不按标签筛选", example = "落日")
     private String tag;
+
+    /** 只查询当前登录用户关注作者的作品；首页“关注”频道使用。 */
+    @Schema(description = "是否只查询关注作者的作品", example = "true")
+    private Boolean followingOnly;
+
+    /** 服务端注入的当前用户 ID，不接受客户端直接指定。 */
+    @Schema(hidden = true)
+    private String viewerId;
 }

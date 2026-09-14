@@ -11,6 +11,7 @@ import com.shiguang.service.AuthService;
 import com.shiguang.service.UserService;
 import com.shiguang.service.WorkService;
 import com.shiguang.vo.UserInfoVO;
+import com.shiguang.vo.FollowResultVO;
 import com.shiguang.vo.WorkVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -60,6 +61,22 @@ public class UserController {
     public Result<UserInfoVO> update(@RequestBody UpdateUserDTO updateUserDTO) {
         log.info("用户修改: {}", updateUserDTO);
         return Result.success(userService.update(updateUserDTO));
+    }
+
+    /** 关注用户；重复关注保持幂等。 */
+    @Operation(summary = "关注用户")
+    @PostMapping("/{userId}/follow")
+    public Result<FollowResultVO> follow(@PathVariable String userId) {
+        log.info("关注用户：{}", userId);
+        return Result.success(userService.follow(userId));
+    }
+
+    /** 取消关注用户；重复取消保持幂等。 */
+    @Operation(summary = "取消关注用户")
+    @DeleteMapping("/{userId}/follow")
+    public Result<FollowResultVO> unfollow(@PathVariable String userId) {
+        log.info("取消关注用户：{}", userId);
+        return Result.success(userService.unfollow(userId));
     }
 
     /**

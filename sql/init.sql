@@ -2,7 +2,7 @@
 -- 说明：
 --   1. 所有语句均可重复执行（CREATE TABLE IF NOT EXISTS / INSERT IGNORE），
 --      因此既可作为 MySQL 容器首次启动的 init 脚本，也可手动导入已有库。
---   2. 覆盖本地 shiguang 库的全部 12 张业务表，避免部署时缺失 users 等基础表。
+--   2. 覆盖本地 shiguang 库的全部业务表，避免部署时缺失基础表。
 
 CREATE DATABASE IF NOT EXISTS shiguang
     DEFAULT CHARACTER SET utf8mb4
@@ -39,6 +39,15 @@ CREATE TABLE IF NOT EXISTS auth_accounts (
     KEY idx_auth_user (user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '第三方登录账号绑定表';
 
+CREATE TABLE IF NOT EXISTS user_follows (
+    follower_id  VARCHAR(64) NOT NULL COMMENT '发起关注的用户 ID',
+    following_id VARCHAR(64) NOT NULL COMMENT '被关注的用户 ID',
+    created_at   DATETIME    NOT NULL COMMENT '关注时间',
+    PRIMARY KEY (follower_id, following_id),
+    KEY idx_user_follows_following_created (following_id, created_at),
+    KEY idx_user_follows_follower_created (follower_id, created_at)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户关注关系表';
+
 -- ---------------------------------------------------------------------------
 -- 作品
 -- ---------------------------------------------------------------------------
@@ -61,7 +70,8 @@ CREATE TABLE IF NOT EXISTS works (
     updated_at    DATETIME      NOT NULL,
     PRIMARY KEY (id),
     KEY idx_works_author_status (author_id, status, published_at),
-    KEY idx_works_title (title)
+    KEY idx_works_title (title),
+    KEY idx_works_status_location (status, latitude, longitude)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '作品表';
 
 -- ---------------------------------------------------------------------------
@@ -112,6 +122,19 @@ CREATE TABLE IF NOT EXISTS work_likes (
     KEY idx_work_likes_work_id (work_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '作品点赞表';
 
+CREATE TABLE IF NOT EXISTS map_checkins (
+    id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '打卡记录 ID',
+    user_id       VARCHAR(64)  NOT NULL COMMENT '用户 ID',
+    work_id       VARCHAR(64)  NOT NULL COMMENT '作品 ID',
+    latitude      DOUBLE       NOT NULL COMMENT '打卡纬度（GCJ-02）',
+    longitude     DOUBLE       NOT NULL COMMENT '打卡经度（GCJ-02）',
+    location_name VARCHAR(200) NULL COMMENT '打卡位置名称',
+    created_at    DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_map_checkin_user_work (user_id, work_id),
+    KEY idx_map_checkins_user_created (user_id, created_at)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '地图作品打卡记录';
+
 CREATE TABLE IF NOT EXISTS work_favorites (
     user_id    VARCHAR(64) NOT NULL COMMENT '收藏用户ID',
     work_id    VARCHAR(64) NOT NULL COMMENT '作品ID',
@@ -137,8 +160,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     id           BIGINT      NOT NULL AUTO_INCREMENT COMMENT '通知ID',
     recipient_id VARCHAR(64) NOT NULL COMMENT '接收者（作品作者）用户ID',
     actor_id     VARCHAR(64) NOT NULL COMMENT '触发者用户ID',
-    work_id      VARCHAR(64) NOT NULL COMMENT '被互动作品ID',
-    type         VARCHAR(16) NOT NULL COMMENT 'like=点赞 / favorite=收藏',
+    work_id      VARCHAR(64) NULL COMMENT '被互动作品ID；关注通知为空',
+    type         VARCHAR(16) NOT NULL COMMENT 'like=点赞 / favorite=收藏 / follow=关注',
     is_read      TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '0=未读 / 1=已读',
     created_at   DATETIME    NOT NULL COMMENT '通知时间',
     PRIMARY KEY (id),

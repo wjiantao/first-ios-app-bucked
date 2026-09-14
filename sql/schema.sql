@@ -23,5 +23,6 @@ CREATE TABLE IF NOT EXISTS works (
     updated_at    DATETIME      NOT NULL,
     PRIMARY KEY (id),
     KEY idx_works_author_status (author_id, status, published_at),
-    KEY idx_works_title (title)
+    KEY idx_works_title (title),
+    KEY idx_works_status_location (status, latitude, longitude)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '作品表';

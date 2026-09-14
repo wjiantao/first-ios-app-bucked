@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.FollowMapper">
+
+    <!-- INSERT IGNORE 让重复关注保持幂等，服务层可通过影响行数判断是否首次关注。 -->
+    <insert id="insert">
+        INSERT IGNORE INTO user_follows (follower_id, following_id, created_at)
+        VALUES (#{followerId}, #{followingId}, NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_follows
+        WHERE follower_id = #{followerId}
+          AND following_id = #{followingId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM user_follows
+            WHERE follower_id = #{followerId}
+              AND following_id = #{followingId}
+        )
+    </select>
+
+    <select id="countFollowers" resultType="long">
+        SELECT COUNT(*)
+        FROM user_follows
+        WHERE following_id = #{followingId}
+    </select>
+
+</mapper>

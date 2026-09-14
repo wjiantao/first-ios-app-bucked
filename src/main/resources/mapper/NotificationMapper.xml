@@ -11,7 +11,7 @@
     </insert>
 
     <!-- 接收者通知分页：LEFT JOIN 补全 actor 昵称/头像与作品标题/封面。
-         作品被硬删后 w.title 为 NULL，用 COALESCE 回退为“作品已删除”，避免前端拿到空标题。 -->
+         关注通知的 work_id 为空，相关作品字段保持 NULL；作品被硬删后才回退为“作品已删除”。 -->
     <select id="pageByRecipient" resultType="com.shiguang.vo.NotificationVO">
         SELECT n.id,
                n.recipient_id,
@@ -22,7 +22,8 @@
                n.created_at,
                u.nickname                    AS actor_nickname,
                u.avatar_url                  AS actor_avatar_url,
-               COALESCE(w.title, '作品已删除') AS work_title,
+               CASE WHEN n.work_id IS NULL THEN NULL
+                    ELSE COALESCE(w.title, '作品已删除') END AS work_title,
                w.cover_url                   AS work_cover_url
         FROM notifications n
                  LEFT JOIN users u ON u.id = n.actor_id

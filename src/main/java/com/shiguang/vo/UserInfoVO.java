@@ -26,4 +26,7 @@ public class UserInfoVO {
 
     @Schema(description = "个性签名", example = "保持热爱")
     private String tagline;
+
+    @Schema(description = "粉丝数", example = "12")
+    private long followerCount;
 }

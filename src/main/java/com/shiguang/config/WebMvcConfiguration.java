@@ -18,7 +18,9 @@ import java.nio.file.Paths;
  * 需要登录的接口（/api/users/**、/api/works 的发布与详情等）统一走 JWT 校验；
  * 首页游客可读的只读接口放行，未登录也能拉取分类与作品流：
  * - GET /api/categories：首页分类 Tabs / 发布页分类选择器共用；
- * - POST /api/works/page：首页瀑布流分页查询。
+ * - POST /api/works/page：首页瀑布流分页查询；该接口允许游客访问，
+ *   但会尝试读取可选 JWT，供“关注”频道按当前用户过滤。
+ * - POST /api/map/works：Cesium 当前可视范围作品点位查询。
  * /api/auth/** 为公开登录接口，不注册拦截器。
  */
 @Configuration
@@ -34,12 +36,13 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtTokenUserInterceptor)
                 .addPathPatterns("/api/users/**", "/api/categories/**", "/api/works/**", "/api/creator/**",
+                        "/api/map/checkins",
                         "/api/notifications/**", "/api/push/**")
                 .excludePathPatterns(
-                        // 首页游客可读接口：放行后未登录即可浏览首页，
-                        // 登录校验只保留给需要用户身份的能力（发布/详情/个人资料等）。
-                        "/api/categories",
-                        "/api/works/page");
+                        // 首页游客可读接口：放行后未登录即可浏览首页；
+                        // JwtTokenUserInterceptor 仍会为该接口读取有效 JWT，
+                        // 因此登录用户的“关注”频道可以获得 UserContext 身份。
+                        "/api/categories");
     }
 
     @Override

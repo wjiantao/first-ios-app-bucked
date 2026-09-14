@@ -5,6 +5,7 @@ import com.shiguang.entity.AuthAccount;
 import com.shiguang.entity.User;
 import com.shiguang.exception.BusinessException;
 import com.shiguang.mapper.AuthAccountMapper;
+import com.shiguang.mapper.FollowMapper;
 import com.shiguang.mapper.UserMapper;
 import com.shiguang.mail.EmailSender;
 import com.shiguang.properties.JwtProperties;
@@ -61,6 +62,8 @@ public class AuthServiceImpl implements AuthService {
     private UserMapper userMapper;
     @Autowired
     private AuthAccountMapper authAccountMapper;
+    @Autowired
+    private FollowMapper followMapper;
     @Autowired
     private JwtProperties jwtProperties;
     @Autowired
@@ -276,6 +279,8 @@ public class AuthServiceImpl implements AuthService {
                 .avatarUrl(user.getAvatarUrl())
                 .bio(user.getBio())
                 .tagline(user.getTagline())
+                // 粉丝数属于关注关系表的聚合数据，读取时实时统计，避免 users 表中的冗余值过期。
+                .followerCount(followMapper.countFollowers(user.getId()))
                 .build();
     }
 

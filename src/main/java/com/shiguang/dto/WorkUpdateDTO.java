@@ -19,16 +19,19 @@ public class WorkUpdateDTO {
 
     private String title;
 
+    /** 作品类型：image_text=图文 / article=长文 / video=视频；null=保持不变。 */
+    private String type;
+
     private String coverUrl;
 
     private String contentMd;
 
     private String videoUrl;
 
-    /** 纬度（WGS84），可选。locationName 为 null 时保持不变；清空位置时置 null。 */
+    /** 纬度（GCJ-02，高德坐标），可选。locationName 为 null 时保持不变；清空位置时置 null。 */
     private Double latitude;
 
-    /** 经度（WGS84），可选。locationName 为 null 时保持不变；清空位置时置 null。 */
+    /** 经度（GCJ-02，高德坐标），可选。locationName 为 null 时保持不变；清空位置时置 null。 */
     private Double longitude;
 
     /** 位置展示名；null=保持不变，空字符串=清空位置，非空=更新位置。 */

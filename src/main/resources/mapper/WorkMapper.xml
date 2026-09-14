@@ -20,6 +20,7 @@
     <select id="pageNearby" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -54,7 +55,11 @@
          排序：已发布按 published_at 倒序，未发布(草稿)退化为 created_at，保证 feed 稳定。 -->
         <select id="pageQuery" resultType="com.shiguang.vo.WorkVO">
             SELECT id,
+                   author_id,
+                   (SELECT nickname FROM users WHERE users.id = works.author_id) AS author_nickname,
+                   (SELECT avatar_url FROM users WHERE users.id = works.author_id) AS author_avatar_url,
                    title,
+                   type,
                    cover_url,
                    video_url,
                    latitude,
@@ -68,7 +73,14 @@
                    (SELECT COUNT(*) FROM work_likes wl
                     WHERE wl.work_id = works.id) AS like_count,
                    (SELECT COUNT(*) FROM work_favorites wf
-                    WHERE wf.work_id = works.id) AS favorite_count
+                    WHERE wf.work_id = works.id) AS favorite_count,
+                   EXISTS (
+                       SELECT 1 FROM user_follows uf
+                       WHERE uf.follower_id = #{viewerId}
+                         AND uf.following_id = works.author_id
+                   ) AS following,
+                   (SELECT COUNT(*) FROM user_follows uf
+                    WHERE uf.following_id = works.author_id) AS follower_count
             FROM works
         <where>
             status != 'deleted'
@@ -94,6 +106,13 @@
             <if test="keyword != null and keyword != ''">
                 AND title LIKE CONCAT('%', #{keyword}, '%')
             </if>
+            <if test="followingOnly == true">
+                AND EXISTS (
+                    SELECT 1 FROM user_follows uf
+                    WHERE uf.follower_id = #{viewerId}
+                      AND uf.following_id = works.author_id
+                )
+            </if>
         </where>
         ORDER BY COALESCE(published_at, created_at) DESC, id DESC
     </select>
@@ -101,10 +120,10 @@
     <!-- 发布/保存草稿：插入作品主记录。
          content_text 当前不落库，等纯文本抽取实现后再补写。 -->
     <insert id="insert" parameterType="com.shiguang.entity.Work">
-        INSERT INTO works (id, author_id, title, cover_url, video_url,
+        INSERT INTO works (id, author_id, title, type, cover_url, video_url,
                            latitude, longitude, location_name,
                            content_md, status, published_at, created_at, updated_at)
-        VALUES (#{id}, #{authorId}, #{title}, #{coverUrl}, #{videoUrl},
+        VALUES (#{id}, #{authorId}, #{title}, #{type}, #{coverUrl}, #{videoUrl},
                 #{latitude}, #{longitude}, #{locationName},
                 #{contentMd}, #{status}, #{publishedAt}, #{createdAt}, #{updatedAt})
     </insert>
@@ -142,7 +161,11 @@
     <!-- 发布后按 ID 回查作品（不含软删除），与 pageQuery 字段保持一致 -->
     <select id="getById" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
+               author_id,
+               (SELECT nickname FROM users WHERE users.id = works.author_id) AS author_nickname,
+               (SELECT avatar_url FROM users WHERE users.id = works.author_id) AS author_avatar_url,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -166,7 +189,14 @@
                    SELECT 1 FROM work_favorites wf
                    WHERE wf.work_id = works.id
                      AND wf.user_id = #{userId}
-               ) AS favorited
+               ) AS favorited,
+               EXISTS (
+                   SELECT 1 FROM user_follows uf
+                   WHERE uf.follower_id = #{userId}
+                     AND uf.following_id = works.author_id
+               ) AS following,
+               (SELECT COUNT(*) FROM user_follows uf
+                WHERE uf.following_id = works.author_id) AS follower_count
         FROM works
         WHERE id = #{id}
           AND status != 'deleted'
@@ -177,6 +207,7 @@
         SELECT id,
                author_id,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -198,6 +229,7 @@
         UPDATE works
         <set>
             <if test="title != null">title = #{title},</if>
+            <if test="type != null">type = #{type},</if>
             <if test="coverUrl != null">cover_url = #{coverUrl},</if>
             <if test="videoUrl != null">video_url = #{videoUrl},</if>
             <if test="contentMd != null">content_md = #{contentMd},</if>
@@ -265,6 +297,7 @@
     <select id="pageMyWorks" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -301,6 +334,7 @@
     <select id="pageMyManageWorks" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -336,6 +370,7 @@
     <select id="pageMyDrafts" resultType="com.shiguang.vo.WorkVO">
         SELECT id,
                title,
+               type,
                cover_url,
                video_url,
                latitude,
@@ -372,6 +407,7 @@
     <select id="pageMyLikes" resultType="com.shiguang.vo.WorkVO">
         SELECT w.id,
                w.title,
+               w.type,
                w.cover_url,
                w.video_url,
                w.latitude,
@@ -410,6 +446,7 @@
     <select id="pageMyFavorites" resultType="com.shiguang.vo.WorkVO">
         SELECT w.id,
                w.title,
+               w.type,
                w.cover_url,
                w.video_url,
                w.latitude,

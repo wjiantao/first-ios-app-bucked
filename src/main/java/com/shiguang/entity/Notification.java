@@ -7,24 +7,24 @@ import java.time.LocalDateTime;
 /**
  * 通知实体，对应 notifications 表。
  *
- * 当他人点赞/收藏某篇「已发布」作品时，给作品作者（recipient）写入一条通知；
- * 取消点赞/收藏不删除历史通知。type 取值：like=点赞 / favorite=收藏。
+ * 当他人点赞/收藏某篇「已发布」作品或关注用户时，给接收者写入一条通知；
+ * 取消关系不删除历史通知。关注通知不关联作品，因此 workId 可以为空。
  */
 @Data
 public class Notification {
 
     private Long id;
 
-    /** 接收者（作品作者）用户 ID */
+    /** 接收者用户 ID */
     private String recipientId;
 
     /** 触发者（点赞/收藏的人）用户 ID */
     private String actorId;
 
-    /** 被互动的作品 ID */
+    /** 被互动的作品 ID；关注通知为空 */
     private String workId;
 
-    /** 通知类型：like / favorite */
+    /** 通知类型：like / favorite / follow */
     private String type;
 
     /** 是否已读：false=未读 / true=已读 */

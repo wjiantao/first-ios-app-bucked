@@ -6,7 +6,7 @@
 
 USE shiguang;
 
-ALTER TABLE push_devices
+ALTER TABLE
     ADD COLUMN vendor VARCHAR(16) NOT NULL DEFAULT 'jpush' COMMENT '推送厂商：当前仅支持 jpush'
     AFTER platform;
 
