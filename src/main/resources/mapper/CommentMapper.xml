@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shiguang.mapper.CommentMapper">
+    <select id="pageByWork" resultType="com.shiguang.vo.CommentVO">
+        SELECT c.id, c.work_id, c.author_id,
+               u.nickname AS author_nickname, u.avatar_url AS author_avatar_url,
+               c.parent_id,
+               parent.author_id AS reply_to_author_id,
+               parent_user.nickname AS reply_to_nickname,
+               CASE WHEN c.status = 'deleted' THEN '' ELSE c.content END AS content,
+               CASE WHEN c.status = 'deleted' THEN NULL ELSE c.image_url END AS image_url,
+               (c.author_id = #{userId}) AS mine,
+               (c.status = 'deleted') AS deleted,
+               c.created_at
+        FROM comments c
+        LEFT JOIN users u ON u.id = c.author_id
+        LEFT JOIN comments parent ON parent.id = c.parent_id
+        LEFT JOIN users parent_user ON parent_user.id = parent.author_id
+        WHERE c.work_id = #{workId}
+        ORDER BY c.created_at DESC, c.id DESC
+    </select>
+
+    <select id="selectById" resultType="com.shiguang.entity.Comment">
+        SELECT id, work_id, author_id, parent_id, content, image_url, status, created_at, deleted_at
+        FROM comments WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.shiguang.entity.Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (work_id, author_id, parent_id, content, image_url, status, created_at)
+        VALUES (#{workId}, #{authorId}, #{parentId}, #{content}, #{imageUrl}, 'active', #{createdAt})
+    </insert>
+
+    <update id="softDelete">
+        UPDATE comments SET status = 'deleted', content = '', image_url = NULL, deleted_at = NOW()
+        WHERE id = #{id} AND author_id = #{authorId} AND status = 'active'
+    </update>
+</mapper>
