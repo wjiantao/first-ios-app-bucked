@@ -30,11 +30,18 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public long create(String recipientId, String actorId, String workId, String type) {
+        return create(recipientId, actorId, workId, type, null, null);
+    }
+
+    @Override
+    public long create(String recipientId, String actorId, String workId, String type, Long commentId, String commentContent) {
         Notification notification = new Notification();
         notification.setRecipientId(recipientId);
         notification.setActorId(actorId);
         notification.setWorkId(workId);
         notification.setType(type);
+        notification.setCommentId(commentId);
+        notification.setCommentContent(commentContent);
         notification.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(notification);
         log.info("写入通知成功 recipientId={} actorId={} workId={} type={} id={}",

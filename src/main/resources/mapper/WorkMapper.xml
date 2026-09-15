@@ -35,6 +35,8 @@
                 WHERE wl.work_id = works.id) AS like_count,
                (SELECT COUNT(*) FROM work_favorites wf
                 WHERE wf.work_id = works.id) AS favorite_count,
+               (SELECT COUNT(*) FROM comments c
+                WHERE c.work_id = works.id AND c.status = 'active') AS comment_count,
                <include refid="haversineKm"/> AS distance
         FROM works
         <where>
@@ -185,6 +187,8 @@
                ) AS liked,
                (SELECT COUNT(*) FROM work_favorites wf
                 WHERE wf.work_id = works.id) AS favorite_count,
+               (SELECT COUNT(*) FROM comments c
+                WHERE c.work_id = works.id AND c.status = 'active') AS comment_count,
                EXISTS (
                    SELECT 1 FROM work_favorites wf
                    WHERE wf.work_id = works.id

@@ -36,6 +36,8 @@
     <update id="update" parameterType="com.shiguang.entity.User">
         UPDATE users
         <set>
+            <!-- 密码重置通过此通用更新入口写入新摘要；为空时保留原密码，避免资料更新误覆盖密码。 -->
+            <if test="passwordHash != null">password_hash = #{passwordHash},</if>
             <if test="nickname != null">nickname = #{nickname},</if>
             <if test="bio != null">bio = #{bio},</if>
             <if test="tagline != null">tagline = #{tagline},</if>

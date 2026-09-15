@@ -55,6 +55,9 @@ public class WorkVO {
     @Schema(description = "收藏数", example = "0")
     private long favoriteCount;
 
+    @Schema(description = "评论总数", example = "3")
+    private long commentCount;
+
     @Schema(description = "当前登录用户是否已收藏；列表接口对游客开放时恒为 false", example = "false")
     private boolean favorited;
 

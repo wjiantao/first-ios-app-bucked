@@ -6,8 +6,8 @@
     <!-- 插入通知：is_read 默认 0，无需显式赋值 -->
     <insert id="insert" parameterType="com.shiguang.entity.Notification"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO notifications (recipient_id, actor_id, work_id, type, created_at)
-        VALUES (#{recipientId}, #{actorId}, #{workId}, #{type}, #{createdAt})
+        INSERT INTO notifications (recipient_id, actor_id, work_id, comment_id, comment_content, type, created_at)
+        VALUES (#{recipientId}, #{actorId}, #{workId}, #{commentId}, #{commentContent}, #{type}, #{createdAt})
     </insert>
 
     <!-- 接收者通知分页：LEFT JOIN 补全 actor 昵称/头像与作品标题/封面。
@@ -17,6 +17,8 @@
                n.recipient_id,
                n.actor_id,
                n.work_id,
+               n.comment_id,
+               n.comment_content AS content,
                n.type,
                n.is_read,
                n.created_at,

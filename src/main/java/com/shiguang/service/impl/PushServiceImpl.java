@@ -60,8 +60,10 @@ public class PushServiceImpl implements PushService {
             String nickname = (actor != null && actor.getNickname() != null && !actor.getNickname().isBlank())
                     ? actor.getNickname() : "用户";
             boolean like = "like".equals(type);
-            String title = like ? "新点赞" : "新收藏";
-            String bodyText = nickname + " " + (like ? "赞了你的作品《" : "收藏了你的作品《")
+            boolean favorite = "favorite".equals(type);
+            String title = like ? "新点赞" : favorite ? "新收藏" : "新评论";
+            String action = like ? "赞了你的作品《" : favorite ? "收藏了你的作品《" : ("reply".equals(type) ? "回复了你在《" : "评论了你的作品《");
+            String bodyText = nickname + " " + action
                     + (workTitle != null ? workTitle : "你的作品") + "》";
             long badge = notificationMapper.countUnread(recipientId);
 

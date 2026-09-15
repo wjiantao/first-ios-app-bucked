@@ -24,6 +24,12 @@ public class Notification {
     /** 被互动的作品 ID；关注通知为空 */
     private String workId;
 
+    /** 关联评论 ID；点赞、收藏和关注通知为空。 */
+    private Long commentId;
+
+    /** 评论摘要；普通互动通知为空。 */
+    private String commentContent;
+
     /** 通知类型：like / favorite / follow */
     private String type;
 

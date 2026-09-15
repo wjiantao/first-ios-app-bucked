@@ -11,10 +11,12 @@ import com.shiguang.mail.EmailSender;
 import com.shiguang.properties.JwtProperties;
 import com.shiguang.service.AuthService;
 import com.shiguang.store.EmailCodeStore;
+import com.shiguang.store.PasswordResetTokenStore;
 import com.shiguang.utils.JwtUtil;
 import com.shiguang.utils.PasswordUtil;
 import com.shiguang.vo.LoginVO;
 import com.shiguang.vo.SendCodeVO;
+import com.shiguang.vo.PasswordResetTokenVO;
 import com.shiguang.vo.UserInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,10 +71,14 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private EmailCodeStore emailCodeStore;
     @Autowired
+    private PasswordResetTokenStore passwordResetTokenStore;
+    @Autowired
     private EmailSender emailSender;
 
     @Value("${shiguang.email-code.ttl:300000}")
     private long emailCodeTtlMs;
+    @Value("${shiguang.password-reset.token-ttl:600000}")
+    private long passwordResetTokenTtlMs;
     @Value("${shiguang.dev-mode:true}")
     private boolean devMode;
 
@@ -108,6 +114,81 @@ public class AuthServiceImpl implements AuthService {
             throw ex;
         }
         return new SendCodeVO(true, devMode ? code : null);
+    }
+
+    @Override
+    public SendCodeVO sendPasswordResetCode(String email) {
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new BusinessException("邮箱格式不正确");
+        }
+        User user = userMapper.getByEmail(email);
+        // 无论账号是否存在都返回相同结果，避免攻击者通过接口探测注册邮箱。
+        if (user == null || !STATUS_ACTIVE.equals(user.getStatus())) {
+            return new SendCodeVO(true, null);
+        }
+        return sendCode(email);
+    }
+
+    /** 生成并发送验证码；注册和重置共用发信实现，但由调用方决定账号准入规则。 */
+    private SendCodeVO sendCode(String email) {
+        String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
+        emailCodeStore.save(email, code, emailCodeTtlMs);
+        int ttlMinutes = (int) (emailCodeTtlMs / 1000 / 60);
+        try {
+            if (emailSender.isConfigured()) {
+                emailSender.sendVerificationCode(email, code, ttlMinutes);
+            } else if (devMode) {
+                log.info("邮箱验证码（未发送邮件，仅开发模式） email={} code={}", email, code);
+            } else {
+                throw new BusinessException(500, "邮件服务未配置，无法发送验证码");
+            }
+        } catch (BusinessException ex) {
+            emailCodeStore.delete(email);
+            throw ex;
+        }
+        return new SendCodeVO(true, devMode ? code : null);
+    }
+
+    @Override
+    public PasswordResetTokenVO verifyPasswordResetCode(String email, String code) {
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new BusinessException("邮箱格式不正确");
+        }
+        User user = userMapper.getByEmail(email);
+        if (user == null || !STATUS_ACTIVE.equals(user.getStatus())) {
+            throw new BusinessException(400, "验证码错误或已过期");
+        }
+        verifyEmailCode(email, code);
+        String token = UUID.randomUUID().toString();
+        passwordResetTokenStore.save(token, email, passwordResetTokenTtlMs);
+        return new PasswordResetTokenVO(token);
+    }
+
+    @Override
+    @Transactional
+    public boolean completePasswordReset(String resetToken, String password) {
+        if (resetToken == null || resetToken.isBlank()) {
+            throw new BusinessException("密码重置凭证无效或已过期");
+        }
+        if (password == null || password.length() < PASSWORD_MIN_LENGTH) {
+            throw new BusinessException("密码至少需要 6 位");
+        }
+        String email = passwordResetTokenStore.get(resetToken);
+        if (email == null) {
+            throw new BusinessException("密码重置凭证无效或已过期");
+        }
+        User user = userMapper.getByEmail(email);
+        if (user == null || !STATUS_ACTIVE.equals(user.getStatus())) {
+            passwordResetTokenStore.delete(resetToken);
+            throw new BusinessException("账号状态不支持重置密码");
+        }
+        User update = new User();
+        update.setId(user.getId());
+        update.setPasswordHash(PasswordUtil.hash(password));
+        userMapper.update(update);
+        // 只有数据库更新成功后才消费凭证，异常时允许客户端安全重试。
+        passwordResetTokenStore.delete(resetToken);
+        return true;
     }
 
     @Override

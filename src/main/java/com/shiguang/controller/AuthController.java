@@ -4,11 +4,13 @@ import com.shiguang.dto.EmailLoginDTO;
 import com.shiguang.dto.RegisterVerifyDTO;
 import com.shiguang.dto.SendEmailCodeDTO;
 import com.shiguang.dto.SetPasswordDTO;
+import com.shiguang.dto.PasswordResetCompleteDTO;
 import com.shiguang.dto.SocialLoginDTO;
 import com.shiguang.result.Result;
 import com.shiguang.service.AuthService;
 import com.shiguang.vo.LoginVO;
 import com.shiguang.vo.SendCodeVO;
+import com.shiguang.vo.PasswordResetTokenVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +47,28 @@ public class AuthController {
     public Result<SendCodeVO> sendEmailCode(@RequestBody SendEmailCodeDTO dto) {
         log.info("发送邮箱验证码：email={}", dto.getEmail());
         return Result.success(authService.sendEmailCode(dto.getEmail()));
+    }
+
+    @Operation(summary = "发送密码重置验证码",
+            description = "向已存在的邮箱账号发送验证码；无论邮箱是否存在均返回统一受理结果，避免账号枚举。")
+    @PostMapping("/password-reset/email-code")
+    public Result<SendCodeVO> sendPasswordResetCode(@RequestBody SendEmailCodeDTO dto) {
+        log.info("发送密码重置验证码：email={}", dto.getEmail());
+        return Result.success(authService.sendPasswordResetCode(dto.getEmail()));
+    }
+
+    @Operation(summary = "校验密码重置验证码")
+    @PostMapping("/password-reset/verify")
+    public Result<PasswordResetTokenVO> verifyPasswordResetCode(
+            @RequestBody RegisterVerifyDTO dto) {
+        log.info("校验密码重置验证码：email={}", dto.getEmail());
+        return Result.success(authService.verifyPasswordResetCode(dto.getEmail(), dto.getCode()));
+    }
+
+    @Operation(summary = "完成密码重置")
+    @PostMapping("/password-reset/complete")
+    public Result<Boolean> completePasswordReset(@RequestBody PasswordResetCompleteDTO dto) {
+        return Result.success(authService.completePasswordReset(dto.getResetToken(), dto.getPassword()));
     }
 
     @Operation(summary = "邮箱注册-校验验证码",

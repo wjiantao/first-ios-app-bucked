@@ -26,10 +26,13 @@ mysql -uroot -p123456 < sql/schema.sql
 # 2. 升级已有数据库，创建关注关系并放宽关注通知的作品字段（可重复执行）
 mysql -uroot -p123456 < sql/migrations/20260914_add_user_follows.sql
 
-# 3. 写入种子数据（可重复执行）
+# 3. 升级已有数据库，创建作品评论及评论通知字段
+mysql -uroot -p123456 < sql/migrations/20260915_add_comments.sql
+
+# 4. 写入种子数据（可重复执行）
 mysql -uroot -p123456 shiguang < sql/seed.sql
 
-# 4. 启动
+# 5. 启动
 mvn spring-boot:run
 ```
 

@@ -26,6 +26,9 @@ public interface NotificationService {
      */
     long create(String recipientId, String actorId, String workId, String type);
 
+    /** 写入带评论上下文的通知，供评论与回复使用。 */
+    long create(String recipientId, String actorId, String workId, String type, Long commentId, String commentContent);
+
     /** 当前用户通知分页（倒序，PageHelper）。 */
     PageResult<NotificationVO> page(ProfilePageQueryDTO profilePageQueryDTO);
 

@@ -39,6 +39,10 @@ public class NotificationVO {
     @Schema(description = "被互动的作品 ID；关注通知为空", example = "w-1a2b3c4d5e6f", nullable = true)
     private String workId;
 
+    private Long commentId;
+
+    private String commentContent;
+
     @Schema(description = "作品标题；关注通知为空，作品已删除时为“作品已删除”", example = "周末的湖边日落", nullable = true)
     private String workTitle;
 
